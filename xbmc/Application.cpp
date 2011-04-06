@@ -3853,7 +3853,7 @@ void CApplication::OnPlayBackEnded()
     getApplicationMessenger().HttpApi("broadcastlevel; OnPlayBackEnded;1");
 #endif
 
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackEnded");
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackEnded");
 
   if (IsPlayingAudio())
   {
@@ -3882,7 +3882,7 @@ void CApplication::OnPlayBackStarted()
     getApplicationMessenger().HttpApi("broadcastlevel; OnPlayBackStarted;1");
 #endif
 
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackStarted", m_itemCurrentFile);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackStarted", m_itemCurrentFile);
 
   CGUIMessage msg(GUI_MSG_PLAYBACK_STARTED, 0, 0);
   g_windowManager.SendThreadMessage(msg);
@@ -3902,7 +3902,7 @@ void CApplication::OnQueueNextItem()
     getApplicationMessenger().HttpApi("broadcastlevel; OnQueueNextItem;1");
 #endif
 
-  CAnnouncementManager::Announce(Playback, "xbmc", "QueueNextItem");
+  CAnnouncementManager::Announce(Player, "xbmc", "QueueNextItem");
 
   if(IsPlayingAudio())
   {
@@ -3931,7 +3931,7 @@ void CApplication::OnPlayBackStopped()
     getApplicationMessenger().HttpApi("broadcastlevel; OnPlayBackStopped;1");
 #endif
 
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackStopped", m_itemCurrentFile);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackStopped", m_itemCurrentFile);
 
   CLastfmScrobbler::GetInstance()->SubmitQueue();
   CLibrefmScrobbler::GetInstance()->SubmitQueue();
@@ -3952,7 +3952,7 @@ void CApplication::OnPlayBackPaused()
     getApplicationMessenger().HttpApi("broadcastlevel; OnPlayBackPaused;1");
 #endif
 
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackPaused", m_itemCurrentFile);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackPaused", m_itemCurrentFile);
 }
 
 void CApplication::OnPlayBackResumed()
@@ -3967,7 +3967,7 @@ void CApplication::OnPlayBackResumed()
     getApplicationMessenger().HttpApi("broadcastlevel; OnPlayBackResumed;1");
 #endif
 
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackResumed", m_itemCurrentFile);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackResumed", m_itemCurrentFile);
 }
 
 void CApplication::OnPlayBackSpeedChanged(int iSpeed)
@@ -3988,7 +3988,7 @@ void CApplication::OnPlayBackSpeedChanged(int iSpeed)
 
   CVariant param;
   param["speed"] = iSpeed;
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackSpeedChanged", m_itemCurrentFile, param);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackSpeedChanged", m_itemCurrentFile, param);
 }
 
 void CApplication::OnPlayBackSeek(int iTime, int seekOffset)
@@ -4010,7 +4010,7 @@ void CApplication::OnPlayBackSeek(int iTime, int seekOffset)
   CVariant param;
   param["time"] = iTime;
   param["seekoffset"] = seekOffset;
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackSeek", param);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackSeek", param);
   g_infoManager.SetDisplayAfterSeek(2500, seekOffset/1000);
 }
 
@@ -4032,7 +4032,7 @@ void CApplication::OnPlayBackSeekChapter(int iChapter)
 
   CVariant param;
   param["chapter"] = iChapter;
-  CAnnouncementManager::Announce(Playback, "xbmc", "PlaybackSeekChapter", param);
+  CAnnouncementManager::Announce(Player, "xbmc", "PlaybackSeekChapter", param);
 }
 
 bool CApplication::IsPlaying() const
