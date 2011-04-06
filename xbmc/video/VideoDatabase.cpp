@@ -3659,7 +3659,7 @@ void CVideoDatabase::SetPlayCount(const CFileItem &item, int count, const CStdSt
 
     CVariant data;
     data["playcount"] = count;
-    ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::Library, "xbmc", "NewPlayCount", CFileItemPtr(new CFileItem(item)), data);
+    ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "NewPlayCount", CFileItemPtr(new CFileItem(item)), data);
   }
   catch (...)
   {
@@ -7711,7 +7711,7 @@ void CVideoDatabase::AnnounceRemove(std::string content, int id)
   CVariant data;
   data["content"] = content;
   data[content + "id"] = id;
-  ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::Library, "xbmc", "RemoveVideo", data);
+  ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "RemoveVideo", data);
 }
 
 void CVideoDatabase::AnnounceUpdate(std::string content, int id)
@@ -7719,7 +7719,7 @@ void CVideoDatabase::AnnounceUpdate(std::string content, int id)
   CVariant data;
   data["content"] = content;
   data[content + "id"] = id;
-  ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::Library, "xbmc", "UpdateVideo", data);
+  ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "UpdateVideo", data);
 }
 
 bool CVideoDatabase::GetItemForPath(const CStdString &content, const CStdString &strPath, CFileItem &item)
