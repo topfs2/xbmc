@@ -21,8 +21,6 @@
 
 #include "JSONRPC.h"
 #include "PlayerOperations.h"
-#include "AVPlayerOperations.h"
-#include "PicturePlayerOperations.h"
 #include "AVPlaylistOperations.h"
 #include "PlaylistOperations.h"
 #include "FileOperations.h"
@@ -57,62 +55,35 @@ JsonRpcMethodMap CJSONRPC::m_methodMaps[] = {
 
 // Player
   { "Player.GetActivePlayers",                      CPlayerOperations::GetActivePlayers },
+  { "Player.State",                                 CPlayerOperations::State },
 
-// Music player
-  { "AudioPlayer.State",                            CAVPlayerOperations::State },
-  { "AudioPlayer.PlayPause",                        CAVPlayerOperations::PlayPause },
-  { "AudioPlayer.Stop",                             CAVPlayerOperations::Stop },
-  { "AudioPlayer.SkipPrevious",                     CAVPlayerOperations::SkipPrevious },
-  { "AudioPlayer.SkipNext",                         CAVPlayerOperations::SkipNext },
+  { "Player.PlayPause",                             CPlayerOperations::PlayPause },
+  { "Player.Stop",                                  CPlayerOperations::Stop },
+  { "Player.SkipPrevious",                          CPlayerOperations::SkipPrevious },
+  { "Player.SkipNext",                              CPlayerOperations::SkipNext },
 
-  { "AudioPlayer.BigSkipBackward",                  CAVPlayerOperations::BigSkipBackward },
-  { "AudioPlayer.BigSkipForward",                   CAVPlayerOperations::BigSkipForward },
-  { "AudioPlayer.SmallSkipBackward",                CAVPlayerOperations::SmallSkipBackward },
-  { "AudioPlayer.SmallSkipForward",                 CAVPlayerOperations::SmallSkipForward },
+  { "Player.BigSkipBackward",                       CPlayerOperations::BigSkipBackward },
+  { "Player.BigSkipForward",                        CPlayerOperations::BigSkipForward },
+  { "Player.SmallSkipBackward",                     CPlayerOperations::SmallSkipBackward },
+  { "Player.SmallSkipForward",                      CPlayerOperations::SmallSkipForward },
 
-  { "AudioPlayer.Rewind",                           CAVPlayerOperations::Rewind },
-  { "AudioPlayer.Forward",                          CAVPlayerOperations::Forward },
+  { "Player.Rewind",                                CPlayerOperations::Rewind },
+  { "Player.Forward",                               CPlayerOperations::Forward },
 
-  { "AudioPlayer.GetTime",                          CAVPlayerOperations::GetTime },
-  { "AudioPlayer.GetPercentage",                    CAVPlayerOperations::GetPercentage },
-  { "AudioPlayer.SeekTime",                         CAVPlayerOperations::SeekTime },
-  { "AudioPlayer.SeekPercentage",                   CAVPlayerOperations::SeekPercentage },
+  { "Player.MoveLeft",                              CPlayerOperations::MoveLeft },
+  { "Player.MoveRight",                             CPlayerOperations::MoveRight },
+  { "Player.MoveDown",                              CPlayerOperations::MoveDown },
+  { "Player.MoveUp",                                CPlayerOperations::MoveUp },
 
-// Video player
-  { "VideoPlayer.State",                            CAVPlayerOperations::State },
-  { "VideoPlayer.PlayPause",                        CAVPlayerOperations::PlayPause },
-  { "VideoPlayer.Stop",                             CAVPlayerOperations::Stop },
-  { "VideoPlayer.SkipPrevious",                     CAVPlayerOperations::SkipPrevious },
-  { "VideoPlayer.SkipNext",                         CAVPlayerOperations::SkipNext },
+  { "Player.ZoomOut",                               CPlayerOperations::ZoomOut },
+  { "Player.ZoomIn",                                CPlayerOperations::ZoomIn },
+  { "Player.Zoom",                                  CPlayerOperations::Zoom },
+  { "Player.Rotate",                                CPlayerOperations::Rotate },
 
-  { "VideoPlayer.BigSkipBackward",                  CAVPlayerOperations::BigSkipBackward },
-  { "VideoPlayer.BigSkipForward",                   CAVPlayerOperations::BigSkipForward },
-  { "VideoPlayer.SmallSkipBackward",                CAVPlayerOperations::SmallSkipBackward },
-  { "VideoPlayer.SmallSkipForward",                 CAVPlayerOperations::SmallSkipForward },
-
-  { "VideoPlayer.Rewind",                           CAVPlayerOperations::Rewind },
-  { "VideoPlayer.Forward",                          CAVPlayerOperations::Forward },
-
-  { "VideoPlayer.GetTime",                          CAVPlayerOperations::GetTime },
-  { "VideoPlayer.GetPercentage",                    CAVPlayerOperations::GetPercentage },
-  { "VideoPlayer.SeekTime",                         CAVPlayerOperations::SeekTime },
-  { "VideoPlayer.SeekPercentage",                   CAVPlayerOperations::SeekPercentage },
-
-// Picture player
-  { "PicturePlayer.PlayPause",                      CPicturePlayerOperations::PlayPause },
-  { "PicturePlayer.Stop",                           CPicturePlayerOperations::Stop },
-  { "PicturePlayer.SkipPrevious",                   CPicturePlayerOperations::SkipPrevious },
-  { "PicturePlayer.SkipNext",                       CPicturePlayerOperations::SkipNext },
-
-  { "PicturePlayer.MoveLeft",                       CPicturePlayerOperations::MoveLeft },
-  { "PicturePlayer.MoveRight",                      CPicturePlayerOperations::MoveRight },
-  { "PicturePlayer.MoveDown",                       CPicturePlayerOperations::MoveDown },
-  { "PicturePlayer.MoveUp",                         CPicturePlayerOperations::MoveUp },
-
-  { "PicturePlayer.ZoomOut",                        CPicturePlayerOperations::ZoomOut },
-  { "PicturePlayer.ZoomIn",                         CPicturePlayerOperations::ZoomIn },
-  { "PicturePlayer.Zoom",                           CPicturePlayerOperations::Zoom },
-  { "PicturePlayer.Rotate",                         CPicturePlayerOperations::Rotate },
+  { "Player.GetTime",                               CPlayerOperations::GetTime },
+  { "Player.GetPercentage",                         CPlayerOperations::GetPercentage },
+  { "Player.SeekTime",                              CPlayerOperations::SeekTime },
+  { "Player.SeekPercentage",                        CPlayerOperations::SeekPercentage },
 
 // Video Playlist
   { "VideoPlaylist.Play",                           CAVPlaylistOperations::Play },

@@ -25,9 +25,54 @@
 
 namespace JSONRPC
 {
+  enum PlayerType
+  {
+    None = 0,
+    Video = 0x1,
+    Audio = 0x2,
+    Picture = 0x4
+  };
+
+  static const int PlayerImplicit = (Video | Audio | Picture);
+
   class CPlayerOperations
   {
   public:
     static JSON_STATUS GetActivePlayers(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+    static JSON_STATUS State(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS PlayPause(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS Stop(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS SkipPrevious(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS SkipNext(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+    static JSON_STATUS BigSkipBackward(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS BigSkipForward(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS SmallSkipBackward(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS SmallSkipForward(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+    static JSON_STATUS Rewind(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS Forward(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+    static JSON_STATUS MoveLeft(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS MoveRight(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS MoveDown(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS MoveUp(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+    static JSON_STATUS ZoomOut(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS ZoomIn(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS Zoom(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS Rotate(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+    static JSON_STATUS GetTime(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS GetPercentage(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS SeekTime(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+    static JSON_STATUS SeekPercentage(const CStdString &method, ITransportLayer *transport, IClient *client, const Json::Value &parameterObject, Json::Value &result);
+
+  private:
+    static int GetActivePlayers();
+    static PlayerType PlayerObjectType(const Json::Value &player);
+    static void SendAction(int actionID);
+    static void CreateTime(int time, Json::Value &result);
   };
 }
