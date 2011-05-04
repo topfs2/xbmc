@@ -82,6 +82,27 @@ public:
 
   void push_back(CVariant variant);
 
+private:
+  typedef std::vector<CVariant> VariantArray;
+  typedef std::map<std::string, CVariant> VariantMap;
+
+public:
+  typedef VariantArray::iterator        iterator_array;
+  typedef VariantArray::const_iterator  const_iterator_array;
+
+  typedef VariantMap::iterator          iterator_map;
+  typedef VariantMap::const_iterator    const_iterator_map;
+
+  iterator_array begin_array();
+  const_iterator_array begin_array() const;
+  iterator_array end_array();
+  const_iterator_array end_array() const;
+
+  iterator_map begin_map();
+  const_iterator_map begin_map() const;
+  iterator_map end_map();
+  const_iterator_map end_map() const;
+
   unsigned int size() const;
   bool empty() const;
   void clear();
@@ -94,9 +115,6 @@ public:
   void toJsonValue(Json::Value& value) const;
 private:
   VariantType m_type;
-
-  typedef std::vector<CVariant> VariantArray;
-  typedef std::map<std::string, CVariant> VariantMap;
 
   union
   {
