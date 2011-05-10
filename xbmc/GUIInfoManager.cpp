@@ -509,7 +509,6 @@ int CGUIInfoManager::TranslateSingleString(const CStdString &strCondition)
     if (strTest.Equals("network.ipaddress")) ret = NETWORK_IP_ADDRESS;
     if (strTest.Equals("network.isdhcp")) ret = NETWORK_IS_DHCP;
     if (strTest.Equals("network.linkstate")) ret = NETWORK_LINK_STATE;
-    if (strTest.Equals("network.macaddress")) ret = NETWORK_MAC_ADDRESS;
     if (strTest.Equals("network.subnetaddress")) ret = NETWORK_SUBNET_ADDRESS;
     if (strTest.Equals("network.gatewayaddress")) ret = NETWORK_GATEWAY_ADDRESS;
     if (strTest.Equals("network.dns1address")) ret = NETWORK_DNS1_ADDRESS;
@@ -1261,7 +1260,6 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow)
     break;
 
   case SYSTEM_VIDEO_ENCODER_INFO:
-  case NETWORK_MAC_ADDRESS:
   case SYSTEM_KERNEL_VERSION:
   case SYSTEM_CPUFREQUENCY:
   case SYSTEM_INTERNET_STATE:
@@ -1499,47 +1497,53 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow)
 #endif
   case NETWORK_IP_ADDRESS:
     {
-      CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-      if (iface)
-        return iface->GetCurrentIPAddress();
+      return g_application.getNetworkManager().GetDefaultConnectionIP();
     }
     break;
   case NETWORK_SUBNET_ADDRESS:
     {
-      CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-      if (iface)
-        return iface->GetCurrentNetmask();
+      return g_application.getNetworkManager().GetDefaultConnectionNetmask();
+    }
+    break;
+  case NETWORK_MAC_ADDRESS:
+    {
+      return g_application.getNetworkManager().GetDefaultConnectionMacAddress();
     }
     break;
   case NETWORK_GATEWAY_ADDRESS:
     {
-      CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-      if (iface)
-        return iface->GetCurrentDefaultGateway();
+      return g_application.getNetworkManager().GetDefaultConnectionGateway();
     }
     break;
   case NETWORK_DNS1_ADDRESS:
     {
+/*
       vector<CStdString> nss = g_application.getNetwork().GetNameServers();
       if (nss.size() >= 1)
         return nss[0];
+*/
     }
     break;
   case NETWORK_DNS2_ADDRESS:
     {
+/*
       vector<CStdString> nss = g_application.getNetwork().GetNameServers();
       if (nss.size() >= 2)
         return nss[1];
+*/
     }
     break;
   case NETWORK_DHCP_ADDRESS:
     {
+/*
       CStdString dhcpserver;
       return dhcpserver;
+*/
     }
     break;
   case NETWORK_LINK_STATE:
     {
+/*
       CStdString linkStatus = g_localizeStrings.Get(151);
       linkStatus += " ";
       CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
@@ -1548,6 +1552,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow)
       else
         linkStatus += g_localizeStrings.Get(15208);
       return linkStatus;
+*/
     }
     break;
 

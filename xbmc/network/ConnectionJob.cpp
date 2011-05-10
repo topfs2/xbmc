@@ -1,4 +1,3 @@
-#pragma once
 /*
  *      Copyright (C) 2005-2011 Team XBMC
  *      http://www.xbmc.org
@@ -20,30 +19,32 @@
  *
  */
 
-#pragma once
+#include "ConnectionJob.h"
+#include "utils/log.h"
+#include "dialogs/GUIDialogKeyboard.h"
 
-#include <vector>
-#include "guilib/GUIDialog.h"
-#include "IConnection.h"
-#include "utils/Job.h"
-
-class CFileItemList;
-
-class CGUIDialogAccessPoints : public CGUIDialog, public IJobCallback
+CConnectionJob::CConnectionJob(CConnectionPtr connection)
 {
-public:
-  CGUIDialogAccessPoints(void);
-  virtual ~CGUIDialogAccessPoints(void);
-  virtual void OnInitWindow();
-  virtual bool OnAction(const CAction &action);
+  m_connection = connection;
+}
 
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
-private:
-  void UpdateConnectionList();
+bool CConnectionJob::DoWork()
+{
+  return m_connection->Connect((IPassphraseStorage *)this, CIPConfig());
+}
 
-  static const char *ConnectionStateToString(ConnectionState state);
-  static const char *ConnectionTypeToString(ConnectionType type);
-  static const char *EncryptionToString(EncryptionType type);
+void CConnectionJob::InvalidatePassphrase(const std::string &uuid)
+{
+}
 
-  CFileItemList *m_connectionsFileList;
-};
+bool CConnectionJob::GetPassphrase(const std::string &uuid, std::string &passphrase)
+{
+  CStdString utf8;
+  bool result = CGUIDialogKeyboard::ShowAndGetNewPassword(utf8);
+  passphrase = utf8;
+  return result;
+}
+
+void CConnectionJob::StorePassphrase(const std::string &uuid, const std::string &passphrase)
+{
+}

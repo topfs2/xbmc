@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2011 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,24 +21,23 @@
 
 #include "GUIDialogAccessPoints.h"
 #include "dialogs/GUIDialogKeyboard.h"
-#ifdef _LINUX
-#include "linux/NetworkLinux.h"
-#endif
 #include "Application.h"
 #include "FileItem.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/JobManager.h"
+#include "ConnectionJob.h"
 
 #define CONTROL_ACCESS_POINTS 3
 
 CGUIDialogAccessPoints::CGUIDialogAccessPoints(void)
     : CGUIDialog(WINDOW_DIALOG_ACCESS_POINTS, "DialogAccessPoints.xml")
 {
-  m_accessPoints = new CFileItemList;
+  m_connectionsFileList = new CFileItemList;
 }
 
 CGUIDialogAccessPoints::~CGUIDialogAccessPoints(void)
 {
-  delete m_accessPoints;
+  delete m_connectionsFileList;
 }
 
 bool CGUIDialogAccessPoints::OnAction(const CAction &action)
@@ -49,25 +48,15 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
     OnMessage(msg);
     int iItem = msg.GetParam1();
 
-    if (iItem == (int) m_aps.size())
-    {
-       m_selectedAPEssId = "";
-       if (CGUIDialogKeyboard::ShowAndGetInput(m_selectedAPEssId, g_localizeStrings.Get(789), false))
-       {
-         m_selectedAPEncMode = m_aps[iItem].getEncryptionMode();
-         m_wasItemSelected = true;
-         Close();
-         return true;
-       }
-    }
-    else
-    {
-       m_selectedAPEssId = m_aps[iItem].getEssId();
-       m_selectedAPEncMode = m_aps[iItem].getEncryptionMode();
-       m_wasItemSelected = true;
-       Close();
-       return true;
-    }
+    ConnectionList connections = g_application.getNetworkManager().GetConnections();
+    CJobManager::GetInstance().AddJob(new CConnectionJob(connections[iItem]), this);
+
+    return true;
+  }
+  else if (action.GetID() == 300)
+  {
+    UpdateConnectionList();
+    return true;
   }
 
   return CGUIDialog::OnAction(action);
@@ -75,59 +64,100 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
 
 void CGUIDialogAccessPoints::OnInitWindow()
 {
-  m_wasItemSelected = false;
-
   CGUIDialog::OnInitWindow();
+
+  UpdateConnectionList();
+}
+
+void CGUIDialogAccessPoints::OnJobComplete(unsigned int jobID, bool success, CJob *job)
+{
+  if (success)
+    Close();
+}
+
+void CGUIDialogAccessPoints::UpdateConnectionList()
+{
+  m_connectionsFileList->Clear();
 
   CGUIMessage msgReset(GUI_MSG_LABEL_RESET, GetID(), CONTROL_ACCESS_POINTS);
   OnMessage(msgReset);
 
-  m_accessPoints->Clear();
+  ConnectionList connections = g_application.getNetworkManager().GetConnections();
 
-  CStdString ifaceName(m_interfaceName);
-  CNetworkInterface* iface = g_application.getNetwork().GetInterfaceByName(ifaceName);
-  m_aps = iface->GetAccessPoints();
-
-  for (int i = 0; i < (int) m_aps.size(); i++)
+  for (int i = 0; i < (int) connections.size(); i++)
   {
-      CFileItemPtr item(new CFileItem(m_aps[i].getEssId()));
+    CFileItemPtr item(new CFileItem(connections[i]->GetName()));
 
-      int q = m_aps[i].getQuality();
-      if (q <= 20) item->SetThumbnailImage("ap-signal1.png");
-      else if (q <= 40) item->SetThumbnailImage("ap-signal2.png");
-      else if (q <= 60) item->SetThumbnailImage("ap-signal3.png");
-      else if (q <= 80) item->SetThumbnailImage("ap-signal4.png");
-      else if (q <= 100) item->SetThumbnailImage("ap-signal5.png");
+    if (connections[i]->GetConnectionType() == NETWORK_CONNECTION_TYPE_WIFI)
+    {
+      item->SetProperty("signal", (int)(connections[i]->GetStrength() / 20));
+      item->SetProperty("encryption", EncryptionToString(connections[i]->GetEncryption()));
+    }
 
-      if (m_aps[i].getEncryptionMode() != ENC_NONE)
-         item->SetIconImage("ap-lock.png");
-
-      m_accessPoints->Add(item);
+    item->SetProperty("type", ConnectionTypeToString(connections[i]->GetConnectionType()));
+    item->SetProperty("state", ConnectionStateToString(connections[i]->GetConnectionState()));
+ 
+    m_connectionsFileList->Add(item);
   }
 
-  CFileItemPtr item(new CFileItem(g_localizeStrings.Get(1047)));
-  m_accessPoints->Add(item);
-
-  CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_ACCESS_POINTS, 0, 0, m_accessPoints);
+  CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_ACCESS_POINTS, 0, 0, m_connectionsFileList);
   OnMessage(msg);
 }
 
-void CGUIDialogAccessPoints::SetInterfaceName(CStdString interfaceName)
+const char *CGUIDialogAccessPoints::ConnectionStateToString(ConnectionState state)
 {
-  m_interfaceName = interfaceName;
+  switch (state)
+  {
+    case NETWORK_CONNECTION_STATE_DISCONNECTED:
+      return "disconnected";
+    case NETWORK_CONNECTION_STATE_CONNECTING:
+      return "connecting";
+    case NETWORK_CONNECTION_STATE_CONNECTED:
+      return "connected";
+    case NETWORK_CONNECTION_STATE_FAILURE:
+      return "failure";
+    case NETWORK_CONNECTION_STATE_UNKNOWN:
+    default:
+      return "unknown";
+  }
+
+  return "";
 }
 
-CStdString CGUIDialogAccessPoints::GetSelectedAccessPointEssId()
+const char *CGUIDialogAccessPoints::ConnectionTypeToString(ConnectionType type)
 {
-  return m_selectedAPEssId;
+  switch (type)
+  {
+    case NETWORK_CONNECTION_TYPE_WIRED:
+      return "wired";
+    case NETWORK_CONNECTION_TYPE_WIFI:
+      return "wifi";
+    case NETWORK_CONNECTION_TYPE_UNKNOWN:
+    default:
+      return "unknown";
+  }
+
+  return "";
 }
 
-EncMode CGUIDialogAccessPoints::GetSelectedAccessPointEncMode()
+const char *CGUIDialogAccessPoints::EncryptionToString(EncryptionType type)
 {
-  return m_selectedAPEncMode;
-}
+  switch (type)
+  {
+    case NETWORK_CONNECTION_ENCRYPTION_NONE:
+      return "";
+    case NETWORK_CONNECTION_ENCRYPTION_WEP:
+      return "wep";
+    case NETWORK_CONNECTION_ENCRYPTION_WPA:
+      return "wpa";
+    case NETWORK_CONNECTION_ENCRYPTION_WPA2:
+      return "wpa2";
+    case NETWORK_CONNECTION_ENCRYPTION_IEEE8021x:
+      return "wpa-rsn";
+    case NETWORK_CONNECTION_ENCRYPTION_UNKNOWN:
+    default:
+      return "unknown";
+  }
 
-bool CGUIDialogAccessPoints::WasItemSelected()
-{
-  return m_wasItemSelected;
+  return "";
 }

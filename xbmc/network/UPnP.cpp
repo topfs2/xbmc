@@ -24,7 +24,6 @@
 #include "utils/URIUtils.h"
 #include "Application.h"
 
-#include "Network.h"
 #include "utils/log.h"
 #include "filesystem/MusicDatabaseDirectory.h"
 #include "filesystem/VideoDatabaseDirectory.h"
@@ -1692,9 +1691,7 @@ CUPnPRenderer::GetMetadata(NPT_String& meta)
         CStdString thumb = g_infoManager.GetImage(MUSICPLAYER_COVER, -1); //TODO: Only audio for now
 
         NPT_String ip;
-        if (g_application.getNetwork().GetFirstConnectedInterface()) {
-            ip = g_application.getNetwork().GetFirstConnectedInterface()->GetCurrentIPAddress().c_str();
-        }
+        ip = g_application.getNetworkManager().GetDefaultConnectionIP().c_str();
         // build url, use the internal device http server to serv the image
         NPT_HttpUrlQuery query;
         query.AddField("path", thumb.c_str());
@@ -2006,9 +2003,7 @@ CUPnP::CUPnP() :
     m_UPnP = new PLT_UPnP(1900, !broadcast);
 
     // keep main IP around
-    if (g_application.getNetwork().GetFirstConnectedInterface()) {
-        m_IP = g_application.getNetwork().GetFirstConnectedInterface()->GetCurrentIPAddress().c_str();
-    }
+    m_IP = g_application.getNetworkManager().GetDefaultConnectionIP().c_str();
     NPT_List<NPT_IpAddress> list;
     if (NPT_SUCCEEDED(PLT_UPnPMessageHelper::GetIPAddresses(list))) {
         m_IP = (*(list.GetFirstItem())).ToString();

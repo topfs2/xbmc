@@ -1,4 +1,3 @@
-#pragma once
 /*
  *      Copyright (C) 2005-2011 Team XBMC
  *      http://www.xbmc.org
@@ -20,30 +19,13 @@
  *
  */
 
-#pragma once
+#include "NetworkUtils.h"
+#include <stdio.h>
 
-#include <vector>
-#include "guilib/GUIDialog.h"
-#include "IConnection.h"
-#include "utils/Job.h"
-
-class CFileItemList;
-
-class CGUIDialogAccessPoints : public CGUIDialog, public IJobCallback
+std::string CNetworkUtils::IPTotring(unsigned int ip)
 {
-public:
-  CGUIDialogAccessPoints(void);
-  virtual ~CGUIDialogAccessPoints(void);
-  virtual void OnInitWindow();
-  virtual bool OnAction(const CAction &action);
-
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
-private:
-  void UpdateConnectionList();
-
-  static const char *ConnectionStateToString(ConnectionState state);
-  static const char *ConnectionTypeToString(ConnectionType type);
-  static const char *EncryptionToString(EncryptionType type);
-
-  CFileItemList *m_connectionsFileList;
-};
+  char buffer[16];
+  sprintf(buffer, "%i:%i:%i:%i", ip & 0xff, (ip & (0xff << 8)) >> 8, (ip & (0xff << 16)) >> 16, (ip & (0xff << 24)) >> 24);
+  std::string returnString = buffer;
+  return returnString;
+}

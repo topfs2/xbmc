@@ -13,7 +13,6 @@ SRCS=cddb.cpp \
      EventServer.cpp \
      GUIDialogAccessPoints.cpp \
      GUIDialogNetworkSetup.cpp \
-     Network.cpp \
      Socket.cpp \
      TCPServer.cpp \
      UdpClient.cpp \
@@ -21,6 +20,9 @@ SRCS=cddb.cpp \
      WebServer.cpp \
      ZeroconfBrowser.cpp \
      Zeroconf.cpp \
+     NetworkManager.cpp \
+     NetworkUtils.cpp \
+     ConnectionJob.cpp \
 
 LIB=network.a
 

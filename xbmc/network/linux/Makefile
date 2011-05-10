@@ -1,5 +1,4 @@
-SRCS=NetworkLinux.cpp \
-     ZeroconfAvahi.cpp \
+SRCS=ZeroconfAvahi.cpp \
      ZeroconfBrowserAvahi.cpp \
 
 LIB=network_linux.a

@@ -31,7 +31,6 @@
 #include "filesystem/FileCurl.h"
 #include "XMLUtils.h"
 #include "Temperature.h"
-#include "network/Network.h"
 #include "Util.h"
 #include "Application.h"
 #include "settings/GUISettings.h"
@@ -121,7 +120,7 @@ CWeatherJob::CWeatherJob(const CStdString &areaCode)
 bool CWeatherJob::DoWork()
 {
   // wait for the network
-  if (!g_application.getNetwork().IsAvailable(true))
+  if (!g_application.getNetworkManager().IsAvailable(true))
     return false;
 
   // Download our weather

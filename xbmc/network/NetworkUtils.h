@@ -20,30 +20,10 @@
  *
  */
 
-#pragma once
+#include <string>
 
-#include <vector>
-#include "guilib/GUIDialog.h"
-#include "IConnection.h"
-#include "utils/Job.h"
-
-class CFileItemList;
-
-class CGUIDialogAccessPoints : public CGUIDialog, public IJobCallback
+class CNetworkUtils
 {
 public:
-  CGUIDialogAccessPoints(void);
-  virtual ~CGUIDialogAccessPoints(void);
-  virtual void OnInitWindow();
-  virtual bool OnAction(const CAction &action);
-
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
-private:
-  void UpdateConnectionList();
-
-  static const char *ConnectionStateToString(ConnectionState state);
-  static const char *ConnectionTypeToString(ConnectionType type);
-  static const char *EncryptionToString(EncryptionType type);
-
-  CFileItemList *m_connectionsFileList;
+  static std::string IPTotring(unsigned int ip);
 };

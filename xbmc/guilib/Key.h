@@ -289,6 +289,8 @@
 
 #define ACTION_PLAYER_PLAYPAUSE       227 // Play/pause. If playing it pauses, if paused it plays.
 
+#define ACTION_CONNECTIONS_REFRESH    300
+
 // Window ID defines to make the code a bit more readable
 #define WINDOW_INVALID                     9999
 #define WINDOW_HOME                       10000

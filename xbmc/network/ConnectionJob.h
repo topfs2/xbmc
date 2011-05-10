@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2005-2010 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -20,30 +20,20 @@
  *
  */
 
-#pragma once
-
-#include <vector>
-#include "guilib/GUIDialog.h"
+#include "system.h"
 #include "IConnection.h"
 #include "utils/Job.h"
 
-class CFileItemList;
-
-class CGUIDialogAccessPoints : public CGUIDialog, public IJobCallback
+class CConnectionJob : public CJob, public IPassphraseStorage
 {
 public:
-  CGUIDialogAccessPoints(void);
-  virtual ~CGUIDialogAccessPoints(void);
-  virtual void OnInitWindow();
-  virtual bool OnAction(const CAction &action);
+  CConnectionJob(CConnectionPtr connection);
 
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  virtual bool DoWork();
+
+  virtual void InvalidatePassphrase(const std::string &uuid);
+  virtual bool GetPassphrase(const std::string &uuid, std::string &passphrase);
+  virtual void StorePassphrase(const std::string &uuid, const std::string &passphrase);
 private:
-  void UpdateConnectionList();
-
-  static const char *ConnectionStateToString(ConnectionState state);
-  static const char *ConnectionTypeToString(ConnectionType type);
-  static const char *EncryptionToString(EncryptionType type);
-
-  CFileItemList *m_connectionsFileList;
+  CConnectionPtr m_connection;
 };

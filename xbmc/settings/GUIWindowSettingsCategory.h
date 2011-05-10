@@ -60,9 +60,6 @@ protected:
   void FillInSkinThemes(CSetting *pSetting);
   void FillInSkinColors(CSetting *pSetting);
 
-  void FillInNetworkInterfaces(CSetting *pSetting);
-  void NetworkInterfaceChanged(void);
-
   void FillInAudioDevices(CSetting* pSetting, bool Passthrough = false);
 
   virtual void SetupControls();

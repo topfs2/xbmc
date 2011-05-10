@@ -444,13 +444,7 @@ namespace PYXBMC
 
   PyObject* XBMC_GetIPAddress(PyObject *self, PyObject *args)
   {
-    char cTitleIP[32];
-    sprintf(cTitleIP, "127.0.0.1");
-    CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-    if (iface)
-      return PyString_FromString(iface->GetCurrentIPAddress().c_str());
-
-    return PyString_FromString(cTitleIP);
+    return PyString_FromString(g_application.getNetworkManager().GetDefaultConnectionIP().c_str());
   }
 
   // getDVDState() method

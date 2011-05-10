@@ -52,7 +52,6 @@ public:
   CStdString videoEncoder;
   CStdString cpuFrequency;
   CStdString kernelVersion;
-  CStdString macAddress;
 };
 
 class CSysInfoJob : public CJob

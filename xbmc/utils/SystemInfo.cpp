@@ -28,7 +28,6 @@
 #endif
 #include "GUIInfoManager.h"
 #include "filesystem/FileCurl.h"
-#include "network/Network.h"
 #include "Application.h"
 #include "windowing/WindowingFactory.h"
 #include "settings/Settings.h"
@@ -58,7 +57,6 @@ bool CSysInfoJob::DoWork()
   m_info.videoEncoder      = GetVideoEncoder();
   m_info.cpuFrequency      = GetCPUFreqInfo();
   m_info.kernelVersion     = CSysInfo::GetKernelVersion();
-  m_info.macAddress        = GetMACAddress();
   return true;
 }
 
@@ -84,16 +82,6 @@ CSysData::INTERNET_STATE CSysInfoJob::GetInternetState()
   if (http.IsInternet(false))
     return CSysData::NO_DNS;
   return CSysData::DISCONNECTED;
-}
-
-CStdString CSysInfoJob::GetMACAddress()
-{
-#if defined(HAS_LINUX_NETWORK) || defined(HAS_WIN32_NETWORK)
-  CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-  if (iface)
-    return iface->GetMacAddress();
-#endif
-  return "";
 }
 
 CStdString CSysInfoJob::GetVideoEncoder()
@@ -171,8 +159,6 @@ CStdString CSysInfo::TranslateInfo(int info) const
   {
   case SYSTEM_VIDEO_ENCODER_INFO:
     return m_info.videoEncoder;
-  case NETWORK_MAC_ADDRESS:
-    return m_info.macAddress;
   case SYSTEM_KERNEL_VERSION:
     return m_info.kernelVersion;
   case SYSTEM_CPUFREQUENCY:

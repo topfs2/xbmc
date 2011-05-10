@@ -110,7 +110,6 @@
     #define HAS_SDL_WIN_EVENTS
   #endif
   #define HAS_ZEROCONF
-  #define HAS_LINUX_NETWORK
 #endif
 
 /*****************
@@ -130,7 +129,6 @@
 #define HAS_DBUS_SERVER
 #define HAS_GL
 #define HAS_GLX
-#define HAS_LINUX_NETWORK
 #define HAS_SDL_AUDIO
 #define HAS_LIRC
 #define HAS_SDL_WIN_EVENTS

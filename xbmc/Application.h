@@ -54,7 +54,7 @@ namespace ADDON
 #include "video/Bookmark.h"
 #include "utils/Stopwatch.h"
 #include "ApplicationMessenger.h"
-#include "network/Network.h"
+#include "network/NetworkManager.h"
 #include "utils/CharsetConverter.h"
 #ifdef HAS_PERFORMANCE_SAMPLE
 #include "utils/PerformanceStats.h"
@@ -210,13 +210,9 @@ public:
 
 
   CApplicationMessenger& getApplicationMessenger();
-#if defined(HAS_LINUX_NETWORK)
-  CNetworkLinux& getNetwork();
-#elif defined(HAS_WIN32_NETWORK)
-  CNetworkWin32& getNetwork();
-#else
-  CNetwork& getNetwork();
-#endif
+
+  CNetworkManager& getNetworkManager();
+
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats &GetPerformanceStats();
 #endif
@@ -387,13 +383,9 @@ protected:
   void CreateUserDirs();
 
   CApplicationMessenger m_applicationMessenger;
-#if defined(HAS_LINUX_NETWORK)
-  CNetworkLinux m_network;
-#elif defined(HAS_WIN32_NETWORK)
-  CNetworkWin32 m_network;
-#else
-  CNetwork    m_network;
-#endif
+
+  CNetworkManager    m_network;
+
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats m_perfStats;
 #endif

@@ -74,8 +74,6 @@ class CGUIDialog;
 
 #define TMSG_HTTPAPI              400
 
-#define TMSG_NETWORKMESSAGE         500
-
 #define TMSG_GUI_DO_MODAL             600
 #define TMSG_GUI_SHOW                 601
 #define TMSG_GUI_ACTIVATE_WINDOW      604
@@ -174,8 +172,6 @@ public:
   int SetResponse(CStdString response);
   void HttpApi(std::string cmd, bool wait = false);
   void ExecBuiltIn(const CStdString &command, bool wait = false);
-
-  void NetworkMessage(DWORD dwMessage, DWORD dwParam = 0);
 
   void DoModal(CGUIDialog *pDialog, int iWindowID, const CStdString &param = "");
   void Show(CGUIDialog *pDialog);

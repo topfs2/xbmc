@@ -32,7 +32,7 @@
 #endif
 #include "pictures/GUIWindowSlideShow.h"
 #include "interfaces/Builtins.h"
-#include "network/Network.h"
+#include "network/NetworkManager.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "guilib/GUIWindowManager.h"
@@ -590,12 +590,6 @@ case TMSG_POWERDOWN:
       }
       break;
 
-    case TMSG_NETWORKMESSAGE:
-      {
-        g_application.getNetwork().NetworkMessage((CNetwork::EMESSAGE)pMsg->dwParam1, (int)pMsg->dwParam2);
-      }
-      break;
-
     case TMSG_GUI_DO_MODAL:
       {
         CGUIDialog *pDialog = (CGUIDialog *)pMsg->lpVoid;
@@ -995,12 +989,6 @@ void CApplicationMessenger::RestartApp()
 void CApplicationMessenger::RebootToDashBoard()
 {
   ThreadMessage tMsg = {TMSG_DASHBOARD};
-  SendMessage(tMsg);
-}
-
-void CApplicationMessenger::NetworkMessage(DWORD dwMessage, DWORD dwParam)
-{
-  ThreadMessage tMsg = {TMSG_NETWORKMESSAGE, dwMessage, dwParam};
   SendMessage(tMsg);
 }
 

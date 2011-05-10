@@ -27,7 +27,6 @@
 #include "GUIDialogContextMenu.h"
 #include "storage/MediaManager.h"
 #include "AutoSwitch.h"
-#include "network/Network.h"
 #include "GUIPassword.h"
 #include "guilib/GUIWindowManager.h"
 #include "Application.h"
@@ -564,7 +563,7 @@ bool CGUIDialogFileBrowser::HaveDiscOrConnection( CStdString& strPath, int iDriv
   else if ( iDriveType == CMediaSource::SOURCE_TYPE_REMOTE )
   {
     // TODO: Handle not connected to a remote share
-    if ( !g_application.getNetwork().IsConnected() )
+    if ( !g_application.getNetworkManager().IsConnected() )
     {
       CGUIDialogOK::ShowAndGetInput(220, 221, 0, 0);
       return false;

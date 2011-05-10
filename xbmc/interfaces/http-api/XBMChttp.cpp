@@ -2798,8 +2798,7 @@ bool CXbmcHttp::xbmcBroadcast(CStdString message, int level)
     if (!pUdpBroadcast)
       pUdpBroadcast = new CUdpBroadcast();
     CStdString LocalAddress="";
-	if (g_application.getNetwork().GetFirstConnectedInterface())
-      LocalAddress = g_application.getNetwork().GetFirstConnectedInterface()->GetCurrentIPAddress();
+    LocalAddress = g_application.getNetworkManager().GetDefaultConnectionIP();
     CStdString msg;
     if ((g_settings.m_HttpApiBroadcastLevel & 128)==128)
 		message += ";"+LocalAddress;
