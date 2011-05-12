@@ -71,6 +71,8 @@ namespace ADDON
 
 #include "threads/XBMC_mutex.h"
 
+#include "security/KeyringManager.h"
+
 class CKaraokeLyricsManager;
 class CApplicationMessenger;
 class DPMSSupport;
@@ -402,6 +404,8 @@ protected:
 #ifdef HAS_EVENT_SERVER
   std::map<std::string, std::map<int, float> > m_lastAxisMap;
 #endif
+
+  CKeyringManager m_keyringManager;
 };
 
 extern CApplication g_application;

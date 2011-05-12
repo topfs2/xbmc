@@ -64,6 +64,7 @@ BIN_DIRS=	\
 	lib/libsquish \
 	xbmc/visualizations \
 	xbmc/screensavers \
+	xbmc/security \
 	xbmc/utils \
 	xbmc/settings \
 	xbmc/linux \
@@ -284,6 +285,8 @@ xbmc/windowing/egl/windowing_egl.a: force
 	$(MAKE) -C xbmc/windowing/egl
 xbmc/windowing/osx/windowing_osx.a: force
 	$(MAKE) -C xbmc/windowing/osx
+xbmc/security/security.a: force
+	$(MAKE) -C xbmc/security
 xbmc/storage/storage.a: force
 	$(MAKE) -C xbmc/storage
 xbmc/storage/linux/storage_linux.a: force
@@ -476,6 +479,7 @@ OBJSXBMC=	\
 	xbmc/playlists/playlists.a \
 	xbmc/programs/programs.a \
 	xbmc/powermanagement/powermanagement.a \
+  xbmc/security/security.a \
 	xbmc/storage/storage.a \
 	xbmc/threads/threads.a \
 	xbmc/windows/windows.a \

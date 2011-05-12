@@ -1193,6 +1193,9 @@ bool CApplication::Initialize()
 
   // reset our screensaver (starts timers etc.)
   ResetScreenSaver();
+
+  m_keyringManager.Initialize();
+
   return true;
 }
 
