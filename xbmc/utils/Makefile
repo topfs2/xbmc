@@ -52,6 +52,7 @@ SRCS=AlarmClock.cpp \
      Win32Exception.cpp \
      XMLUtils.cpp \
      XMLVariantParser.cpp \
+     XMLVariantWriter.cpp \
 
 LIB=utils.a
 
