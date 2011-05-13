@@ -358,13 +358,13 @@ void CVariant::erase(unsigned int position)
 
 #include <stdio.h>
 
-void CVariant::debug()
+void CVariant::debug() const
 {
   internaldebug();
   printf("\n");
 }
 
-void CVariant::internaldebug()
+void CVariant::internaldebug() const
 {
   switch (m_type)
   {

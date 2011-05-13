@@ -86,8 +86,8 @@ public:
   void erase(std::string key);
   void erase(unsigned int position);
 
-  void debug();
-  void internaldebug();
+  void debug() const;
+  void internaldebug() const;
 
   void toJsonValue(Json::Value& value) const;
 private:
