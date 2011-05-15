@@ -22,10 +22,12 @@
 #include "ConnectionJob.h"
 #include "utils/log.h"
 #include "dialogs/GUIDialogKeyboard.h"
+#include "security/KeyringManager.h"
 
-CConnectionJob::CConnectionJob(CConnectionPtr connection)
+CConnectionJob::CConnectionJob(CConnectionPtr connection, CKeyringManager *keyringManager)
 {
   m_connection = connection;
+  m_keyringManager = keyringManager;
 }
 
 bool CConnectionJob::DoWork()
@@ -35,16 +37,27 @@ bool CConnectionJob::DoWork()
 
 void CConnectionJob::InvalidatePassphrase(const std::string &uuid)
 {
+  m_keyringManager->EraseSecret("network", uuid);
 }
 
 bool CConnectionJob::GetPassphrase(const std::string &uuid, std::string &passphrase)
 {
-  CStdString utf8;
-  bool result = CGUIDialogKeyboard::ShowAndGetNewPassword(utf8);
-  passphrase = utf8;
-  return result;
+  CVariant secret;
+  if (m_keyringManager->FindSecret("network", uuid, secret) && secret.isString())
+  {
+    passphrase = secret.asString();
+    return true;
+  }
+  else
+  {
+    CStdString utf8;
+    bool result = CGUIDialogKeyboard::ShowAndGetNewPassword(utf8);
+    passphrase = utf8;
+    return result;
+  }
 }
 
 void CConnectionJob::StorePassphrase(const std::string &uuid, const std::string &passphrase)
 {
+  m_keyringManager->StoreSecret("network", uuid, CVariant(passphrase));
 }

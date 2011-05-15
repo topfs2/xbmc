@@ -49,7 +49,7 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
     int iItem = msg.GetParam1();
 
     ConnectionList connections = g_application.getNetworkManager().GetConnections();
-    CJobManager::GetInstance().AddJob(new CConnectionJob(connections[iItem]), this);
+    CJobManager::GetInstance().AddJob(new CConnectionJob(connections[iItem], &g_application.getKeyringManager()), this);
 
     return true;
   }

@@ -24,10 +24,12 @@
 #include "IConnection.h"
 #include "utils/Job.h"
 
+class CKeyringManager;
+
 class CConnectionJob : public CJob, public IPassphraseStorage
 {
 public:
-  CConnectionJob(CConnectionPtr connection);
+  CConnectionJob(CConnectionPtr connection, CKeyringManager *keyringManager);
 
   virtual bool DoWork();
 
@@ -36,4 +38,5 @@ public:
   virtual void StorePassphrase(const std::string &uuid, const std::string &passphrase);
 private:
   CConnectionPtr m_connection;
+  CKeyringManager *m_keyringManager;
 };
