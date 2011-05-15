@@ -21,6 +21,7 @@
 
 #include "NetworkManager.h"
 #include "NullNetworkManager.h"
+#include "linux/ConnmanNetworkManager.h"
 #include "utils/log.h"
 #include "utils/RssReader.h"
 #include "libscrobbler/lastfmscrobbler.h"
@@ -43,7 +44,10 @@ CNetworkManager::~CNetworkManager()
 
 void CNetworkManager::Initialize()
 {
-  // Here should platform specific go
+#ifdef HAS_DBUS
+  if (CConnmanNetworkManager::HasConnman())
+    m_instance = new CConnmanNetworkManager();
+#endif
 
   if (m_instance == NULL)
     m_instance = new CNullNetworkManager();

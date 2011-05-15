@@ -1,5 +1,7 @@
 SRCS=ZeroconfAvahi.cpp \
      ZeroconfBrowserAvahi.cpp \
+     ConnmanConnection.cpp \
+     ConnmanNetworkManager.cpp \
 
 LIB=network_linux.a
 
