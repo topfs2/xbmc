@@ -19,8 +19,10 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
+
 #include "system.h"
 #ifdef HAS_DBUS
+#include "DBusReply.h"
 #include <dbus/dbus.h>
 
 class CDBusMessage
@@ -33,23 +35,22 @@ public:
   bool AppendArgument(const char *string);
   bool AppendArgument(const char **arrayString, unsigned int length);
 
-  DBusMessage *SendSystem();
-  DBusMessage *SendSession();
+  CDBusReplyPtr SendSystem();
+  CDBusReplyPtr SendSession();
 
   bool SendAsyncSystem();
   bool SendAsyncSession();
 
-  DBusMessage *Send(DBusBusType type);
-  DBusMessage *Send(DBusConnection *con, DBusError *error);
+  CDBusReplyPtr Send(DBusBusType type);
+  CDBusReplyPtr Send(DBusConnection *con, DBusError *error);
 private:
 
   bool SendAsync(DBusBusType type);
 
   void Close();
-  void PrepareArgument();
+  bool PrepareArgument();
 
   DBusMessage *m_message;
-  DBusMessage *m_reply;
   DBusMessageIter m_args;
   bool m_haveArgs;
 };

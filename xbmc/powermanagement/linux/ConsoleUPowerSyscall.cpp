@@ -202,15 +202,9 @@ void CConsoleUPowerSyscall::UpdateUPower()
 bool CConsoleUPowerSyscall::ConsoleKitMethodCall(const char *method)
 {
   CDBusMessage message("org.freedesktop.ConsoleKit", "/org/freedesktop/ConsoleKit/Manager", "org.freedesktop.ConsoleKit.Manager", method);
-  DBusMessage *reply = message.SendSystem();
-  if (reply)
-  {
-    dbus_bool_t boolean = FALSE;
-
-    if (dbus_message_get_args (reply, NULL, DBUS_TYPE_BOOLEAN, &boolean, DBUS_TYPE_INVALID))
-      return boolean;
-  }
-
-  return false;
+  CDBusReplyPtr reply = message.SendSystem();
+  CVariant result = reply->GetNextArgument();
+ 
+  return result.asBoolean();
 }
 #endif

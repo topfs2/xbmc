@@ -124,15 +124,9 @@ bool CConsoleDeviceKitPowerSyscall::HasDeviceConsoleKit()
 bool CConsoleDeviceKitPowerSyscall::ConsoleKitMethodCall(const char *method)
 {
   CDBusMessage message("org.freedesktop.ConsoleKit", "/org/freedesktop/ConsoleKit/Manager", "org.freedesktop.ConsoleKit.Manager", method);
-  DBusMessage *reply = message.SendSystem();
-  if (reply)
-  {
-    dbus_bool_t boolean = FALSE;
+  CDBusReplyPtr reply = message.SendSystem();
+  CVariant result = reply->GetNextArgument();
 
-    if (dbus_message_get_args (reply, NULL, DBUS_TYPE_BOOLEAN, &boolean, DBUS_TYPE_INVALID))
-      return boolean;
-  }
-
-  return false;
+  return result.asBoolean();
 }
 #endif

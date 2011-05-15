@@ -5,6 +5,7 @@ CXXFLAGS+=-fPIC
 SRCS=ConvUtils.cpp \
      DBusUtil.cpp \
      DBusMessage.cpp \
+     DBusReply.cpp \
      DBusReserve.cpp \
      HALManager.cpp \
      LinuxResourceCounter.cpp \

@@ -24,10 +24,12 @@
 
 CDBusMessage::CDBusMessage(const char *destination, const char *object, const char *interface, const char *method)
 {
-  m_reply = NULL;
-  m_message = dbus_message_new_method_call (destination, object, interface, method);
   m_haveArgs = false;
   CLog::Log(LOGDEBUG, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
+  m_message = dbus_message_new_method_call (destination, object, interface, method);
+
+  if (m_message == NULL)
+    CLog::Log(LOGDEBUG, "DBus: Failed to create message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
 }
 
 CDBusMessage::~CDBusMessage()
@@ -37,36 +39,44 @@ CDBusMessage::~CDBusMessage()
 
 bool CDBusMessage::AppendObjectPath(const char *object)
 {
-  PrepareArgument();
-  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_OBJECT_PATH, &object);
+  if (PrepareArgument())
+    return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_OBJECT_PATH, &object);
+  else
+    return false;
 }
 
 bool CDBusMessage::AppendArgument(const char *string)
 {
-  PrepareArgument();
-  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_STRING, &string);
+  if (PrepareArgument())
+    return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_STRING, &string);
+  else
+    return false;
 }
 
 bool CDBusMessage::AppendArgument(const char **arrayString, unsigned int length)
 {
-  PrepareArgument();
-  DBusMessageIter sub;
-  bool success = dbus_message_iter_open_container(&m_args, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &sub);
+  if (PrepareArgument())
+  {
+    DBusMessageIter sub;
+    bool success = dbus_message_iter_open_container(&m_args, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &sub);
 
-  for (unsigned int i = 0; i < length && success; i++)
-    success &= dbus_message_iter_append_basic(&sub, DBUS_TYPE_STRING, &arrayString[i]);
+    for (unsigned int i = 0; i < length && success; i++)
+      success &= dbus_message_iter_append_basic(&sub, DBUS_TYPE_STRING, &arrayString[i]);
 
-  success &= dbus_message_iter_close_container(&m_args, &sub);
+    success &= dbus_message_iter_close_container(&m_args, &sub);
 
-  return success;
+    return success;
+  }
+  else
+    return false;
 }
 
-DBusMessage *CDBusMessage::SendSystem()
+CDBusReplyPtr CDBusMessage::SendSystem()
 {
   return Send(DBUS_BUS_SYSTEM);
 }
 
-DBusMessage *CDBusMessage::SendSession()
+CDBusReplyPtr CDBusMessage::SendSession()
 {
   return Send(DBUS_BUS_SESSION);
 }
@@ -81,13 +91,13 @@ bool CDBusMessage::SendAsyncSession()
   return SendAsync(DBUS_BUS_SESSION);
 }
 
-DBusMessage *CDBusMessage::Send(DBusBusType type)
+CDBusReplyPtr CDBusMessage::Send(DBusBusType type)
 {
   DBusError error;
   dbus_error_init (&error);
   DBusConnection *con = dbus_bus_get(type, &error);
 
-  DBusMessage *returnMessage = Send(con, &error);
+  CDBusReplyPtr returnMessage = Send(con, &error);
 
   if (dbus_error_is_set(&error))
     CLog::Log(LOGERROR, "DBus: Error %s - %s", error.name, error.message);
@@ -115,33 +125,37 @@ bool CDBusMessage::SendAsync(DBusBusType type)
   return result;
 }
 
-DBusMessage *CDBusMessage::Send(DBusConnection *con, DBusError *error)
+CDBusReplyPtr CDBusMessage::Send(DBusConnection *con, DBusError *error)
 {
   if (con && m_message)
   {
-    if (m_reply)
-      dbus_message_unref(m_reply);
+    DBusMessage *msg = dbus_connection_send_with_reply_and_block(con, m_message, -1, error);
 
-    m_reply = dbus_connection_send_with_reply_and_block(con, m_message, -1, error);
+    if (!dbus_error_is_set(error))
+      return CDBusReplyPtr(new CDBusReply(msg));
+
+    if (msg)
+      dbus_message_unref(msg);
   }
 
-  return m_reply;
+  return CDBusReplyPtr(new CDBusReply());
 }
 
 void CDBusMessage::Close()
 {
   if (m_message)
     dbus_message_unref(m_message);
-
-  if (m_reply)
-    dbus_message_unref(m_reply);
 }
 
-void CDBusMessage::PrepareArgument()
+bool CDBusMessage::PrepareArgument()
 {
+  if (m_message == NULL)
+    return false;
+
   if (!m_haveArgs)
     dbus_message_iter_init_append(m_message, &m_args);
 
   m_haveArgs = true;
+  return true;
 }
 #endif

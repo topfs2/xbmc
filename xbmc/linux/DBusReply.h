@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2010 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,16 +19,32 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
+
 #include "system.h"
 #ifdef HAS_DBUS
-#include "DBusMessage.h"
 #include "utils/Variant.h"
+#include <boost/shared_ptr.hpp>
 
-class CDBusUtil
+struct DBusMessage;
+struct DBusMessageIter;
+
+class CDBusReply : public CVariant
 {
 public:
-  static CVariant GetAll(const char *destination, const char *object, const char *interface);
+  CDBusReply(DBusMessage *message);
+  CDBusReply();
+  virtual ~CDBusReply();
 
-  static CVariant GetVariant(const char *destination, const char *object, const char *interface, const char *property);
+  CVariant GetNextArgument();
+  bool IsErrorSet();
+private:
+  std::string ParseIter(DBusMessageIter *iter, CVariant &parsed);
+
+  DBusMessageIter *m_iterator;
+  DBusMessage *m_message;
+  bool m_hasMoreArguments;
+  bool m_error;
 };
+
+typedef boost::shared_ptr<CDBusReply> CDBusReplyPtr;
 #endif

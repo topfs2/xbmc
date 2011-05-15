@@ -93,16 +93,13 @@ bool CUDiskDevice::Mount()
     const char *array[] = {};
     message.AppendArgument(array, 0);
 
-    DBusMessage *reply = message.SendSystem();
-    if (reply)
+    CDBusReplyPtr reply = message.SendSystem();
+    CVariant arg = reply->GetNextArgument();
+    if (arg.isString())
     {
-      char *mountPoint;
-      if (dbus_message_get_args (reply, NULL, DBUS_TYPE_STRING, &mountPoint, DBUS_TYPE_INVALID))
-      {
-        m_MountPath = mountPoint;
-        CLog::Log(LOGDEBUG, "UDisks: Sucessfully mounted %s on %s", m_DeviceKitUDI.c_str(), mountPoint);
-        m_isMountedByUs = m_isMounted = true;
-      }
+      m_MountPath = arg.asString();
+      CLog::Log(LOGDEBUG, "UDisks.Disks: Sucessfully mounted %s on %s", m_DeviceKitUDI.c_str(), m_MountPath.c_str());
+      m_isMountedByUs = m_isMounted = true;
     }
 
     return m_isMounted;
@@ -122,8 +119,8 @@ bool CUDiskDevice::UnMount()
     const char *array[1];
     message.AppendArgument(array, 0);
 
-    DBusMessage *reply = message.SendSystem();
-    if (reply)
+    CDBusReplyPtr reply = message.SendSystem();
+    if (!reply->IsErrorSet())
       m_isMountedByUs = m_isMounted = false;
 
     return !m_isMounted;
@@ -381,20 +378,11 @@ std::vector<CStdString> CUDisksProvider::EnumerateDisks()
 {
   std::vector<CStdString> devices;
   CDBusMessage message("org.freedesktop.UDisks", "/org/freedesktop/UDisks", "org.freedesktop.UDisks", "EnumerateDevices");
-  DBusMessage *reply = message.SendSystem();
-  if (reply)
-  {
-    char** disks  = NULL;
-    int    length = 0;
+  CDBusReplyPtr reply = message.SendSystem();
+  CVariant objectPaths = reply->GetNextArgument();
 
-    if (dbus_message_get_args (reply, NULL, DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH, &disks, &length, DBUS_TYPE_INVALID))
-    {
-      for (int i = 0; i < length; i++)
-        devices.push_back(disks[i]);
-
-      dbus_free_string_array(disks);
-    }
-  }
+  for (int i = 0; i < objectPaths.size(); i++)
+    devices.push_back(objectPaths[i].asString());
 
   return devices;
 }
