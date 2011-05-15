@@ -213,6 +213,8 @@ public:
 
   CNetworkManager& getNetworkManager();
 
+  CKeyringManager& getKeyringManager();
+
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats &GetPerformanceStats();
 #endif
