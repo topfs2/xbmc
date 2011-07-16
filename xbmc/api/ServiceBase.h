@@ -21,6 +21,7 @@
  */
 
 #include "utils/Variant.h"
+#include "threads/SingleLock.h"
 #include "ServiceProxy.h"
 #include <map>
 #include <vector>
@@ -40,6 +41,7 @@ public:
 
   CVariant GetProperty(const std::string &name, const CVariant &fallback = CVariant::ConstNullVariant) const
   {
+    CSingleLock lock(m_critSect);
     PropertyMap::const_iterator itr = m_properties.find(name);
     if (itr == m_properties.end())
       return fallback;
@@ -55,6 +57,7 @@ public:
 protected:
   void SetProperty(const std::string &name, const CVariant &variant)
   {
+    CSingleLock lock(m_critSect);
     PropertyMap::iterator itr = m_properties.find(name);
     if (itr == m_properties.end() || !variant.Equals(itr->second))
     {
@@ -68,7 +71,8 @@ public:
   {
     if (callback == NULL)
       return false;
-      
+
+    CSingleLock lock(m_critSect);
     m_callbacks.push_back(callback);
     return true;
   }
@@ -78,6 +82,7 @@ public:
     if (callback == NULL)
       return false;
 
+    CSingleLock lock(m_critSect);
     for (typename CallbackVector::iterator itr = m_callbacks.begin(); itr != m_callbacks.end(); itr++)
     {
       if (*itr == callback)
@@ -93,6 +98,7 @@ public:
 protected:
   typedef std::vector<C *> CallbackVector;
   CallbackVector m_callbacks;
+  CCriticalSection m_critSect;
 private:
   PropertyMap m_properties;
 
