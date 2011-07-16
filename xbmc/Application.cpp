@@ -4681,9 +4681,15 @@ void CApplication::Process()
   g_cpuInfo.getUsedPercentage(); // must call it to recalculate pct values
 }
 
+#include "api/TestService.h"
+
 // We get called every 500ms
 void CApplication::ProcessSlow()
 {
+  CServiceProxy<CTestService> test;
+  printf("TestService %s\n", test->GetProperty("MyFirstProperty").asBoolean() ? "true" : "false");
+  test->Test();
+
   g_powerManager.ProcessEvents();
 
 #if defined(__APPLE__) &&  !defined(__arm__)

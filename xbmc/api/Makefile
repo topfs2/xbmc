@@ -1,4 +1,4 @@
-SRCS=
+SRCS=TestService.cpp
 
 LIB=services.a
 
