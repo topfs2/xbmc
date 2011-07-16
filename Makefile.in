@@ -4,6 +4,7 @@ BIN_DIRS=	\
 	lib/tinyXML \
 	xbmc \
 	xbmc/addons \
+  xbmc/api \
 	xbmc/cdrip \
 	xbmc/cores \
 	xbmc/cores/DllLoader \
@@ -201,6 +202,8 @@ lib/tinyXML/tinyxml.a: force
 	$(MAKE) -C lib/tinyXML
 xbmc/xbmc.a: force
 	$(MAKE) -C xbmc
+xbmc/api/services.a: force
+	$(MAKE) -C xbmc/api
 xbmc/cdrip/cdrip.a: force
 	$(MAKE) -C xbmc/cdrip
 xbmc/cores/cores.a: force
@@ -472,6 +475,7 @@ OBJSXBMC=	\
 	xbmc/programs/programs.a \
 	xbmc/powermanagement/powermanagement.a \
 	xbmc/storage/storage.a \
+  xbmc/api/services.a \
 	xbmc/threads/threads.a \
 	xbmc/windows/windows.a \
 	xbmc/interfaces/python/xbmcmodule/xbmcmodule.a \
