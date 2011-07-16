@@ -81,6 +81,8 @@ public:
   CVariant &operator=(const CVariant &rhs);
   bool operator==(const CVariant &rhs) const;
 
+  bool Equals(const CVariant &rhs) const;
+
   void push_back(CVariant variant);
   void append(CVariant variant);
 

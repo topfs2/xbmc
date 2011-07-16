@@ -313,6 +313,11 @@ CVariant &CVariant::operator=(const CVariant &rhs)
 
 bool CVariant::operator==(const CVariant &rhs) const
 {
+  return Equals(rhs);
+}
+
+bool CVariant::Equals(const CVariant &rhs) const
+{
   if (m_type == rhs.m_type)
   {
     switch (m_type)
