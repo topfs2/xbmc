@@ -40,6 +40,8 @@ public:
     VariantTypeConstNull
   };
 
+  static CVariant ConstNullVariant;
+
   CVariant(VariantType type = VariantTypeNull);
   CVariant(int integer);
   CVariant(int64_t integer);
@@ -133,6 +135,4 @@ private:
 
   VariantType m_type;
   VariantUnion m_data;
-
-  static CVariant ConstNullVariant;
 };
