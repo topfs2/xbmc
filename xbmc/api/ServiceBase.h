@@ -31,7 +31,7 @@ template<class S, class C> class CServiceBaseCallback;
 // S needs to inherit CServiceBase and C needs to inherit CServiceBaseCallback, otherwise it will fail to compile.
 template<class S, class C> class CServiceBase
 {
-  #define VOID_SIGNAL for (typename CallbackVector::iterator itr = m_callbacks.begin(); itr != m_callbacks.end(); itr++) (*itr)->
+  #define VOID_SIGNAL for (CServiceBase::CallbackItr itr = m_callbacks.begin(); itr != m_callbacks.end(); itr++) (*itr)->
   
 private:
   typedef std::map<std::string, CVariant> PropertyMap;
@@ -97,6 +97,7 @@ public:
 
 protected:
   typedef std::vector<C *> CallbackVector;
+  typedef typename CallbackVector::iterator CallbackItr;
   CallbackVector m_callbacks;
   CCriticalSection m_critSect;
 private:
