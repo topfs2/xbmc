@@ -229,6 +229,9 @@
     <Filter Include="libs\SlingboxLib">
       <UniqueIdentifier>{dfa70c36-927b-4540-b505-35919e64eb3d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="api">
+      <UniqueIdentifier>{0c571a32-6e19-4c7c-8a98-42d8a27d02e3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\xbmc\win32\pch.cpp">
@@ -2467,6 +2470,9 @@
       <Filter>threads</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\InertialScrollingHandler.cpp" />
+    <ClCompile Include="..\..\xbmc\api\TestService.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\win32\pch.h">
@@ -4951,6 +4957,15 @@
       <Filter>threads</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\InertialScrollingHandler.h" />
+    <ClInclude Include="..\..\xbmc\api\ServiceBase.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\api\ServiceProxy.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\api\TestService.h">
+      <Filter>api</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\xbmc\win32\XBMC.ico">
