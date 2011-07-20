@@ -44,4 +44,6 @@ CTestService::CTestService() : CServiceBase<CTestService, CTestServiceCallback>(
 void CTestService::Test()
 {
   SetProperty("MyFirstProperty", false);
+  
+  VOID_SIGNAL MyFirstSignal();
 }
