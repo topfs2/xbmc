@@ -105,7 +105,8 @@ static AEDataFormat defaultDataFormats[] = {
   AE_FMT_S24NE4,
   AE_FMT_S32BE,
   AE_FMT_S32LE,
-  AE_FMT_S32NE
+  AE_FMT_S32NE,
+  AE_FMT_FLOAT
 };
 
 static unsigned int defaultSampleRates[] = {
@@ -488,16 +489,15 @@ unsigned int CAESinkPULSE::AddPackets(uint8_t *data, unsigned int frames, bool h
   unsigned int available = frames * m_format.m_frameSize;
   unsigned int length = std::min((unsigned int)pa_stream_writable_size(m_Stream), available);
   int written = pa_stream_write(m_Stream, data, length, NULL, 0, PA_SEEK_RELATIVE);
-
-  if (written < 0)
-  {
-    CLog::Log(LOGERROR, "CPulseAudioDirectSound::AddPackets - pa_stream_write failed\n");
-    written = 0;
-  }
-
   pa_threaded_mainloop_unlock(m_MainLoop);
 
-  return (unsigned int)(written / m_format.m_frameSize);
+  if (written)
+  {
+    CLog::Log(LOGERROR, "CPulseAudioDirectSound::AddPackets - pa_stream_write failed\n");
+    return 0;
+  }
+
+  return (unsigned int)(length / m_format.m_frameSize);
 }
 
 void CAESinkPULSE::Drain()
@@ -515,7 +515,7 @@ void CAESinkPULSE::SetVolume(float volume)
   if (m_IsAllocated)
   {
     pa_threaded_mainloop_lock(m_MainLoop);
-    pa_volume_t pavolume = pa_sw_volume_to_linear(volume);
+    pa_volume_t pavolume = pa_sw_volume_from_linear(volume);
     if ( pavolume <= 0 )
       pa_cvolume_mute(&m_Volume, m_Channels);
     else
