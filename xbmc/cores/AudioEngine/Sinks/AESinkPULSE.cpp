@@ -108,6 +108,23 @@ static AEDataFormat defaultDataFormats[] = {
   AE_FMT_S32NE
 };
 
+static unsigned int defaultSampleRates[] = {
+  5512,
+  8000,
+  11025,
+  16000,
+  22050,
+  32000,
+  44100,
+  48000,
+  64000,
+  88200,
+  96000,
+  176400,
+  192000,
+  384000
+};
+
 /* Static callback functions */
 
 static void ContextStateCallback(pa_context *c, void *userdata)
@@ -241,6 +258,7 @@ static void SinkInfo(pa_context *c, const pa_sink_info *i, int eol, void *userda
 
       device.m_deviceType = AE_DEVTYPE_PCM;
       device.m_channels = PAChannelToAEChannelMap(i->channel_map);
+      device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
 
       CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
 
