@@ -29,8 +29,8 @@
   #if defined(HAS_ALSA)
     #include "Sinks/AESinkALSA.h"
   #endif
-  #if defined(HAS_PULSE)
-    #include "Sinks/AESinkPulse.h"
+  #if defined(HAS_PULSEAUDIO)
+    #include "Sinks/AESinkPULSE.h"
   #endif
   #include "Sinks/AESinkOSS.h"
 #else
@@ -115,7 +115,7 @@ IAESink *CAESinkFactory::Create(std::string &device, AEAudioFormat &desiredForma
     TRY_SINK(AUDIOTRACK)
 
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
-  #if defined(HAS_PULSE)
+  #if defined(HAS_PULSEAUDIO)
   if (driver.empty() || driver == "PULSE")
     TRY_SINK(PULSE)
   #endif
@@ -153,7 +153,7 @@ void CAESinkFactory::EnumerateEx(AESinkInfoList &list, bool force)
 #elif defined(TARGET_ANDROID)
     ENUMERATE_SINK(AUDIOTRACK, force);
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
-  #if defined(HAS_PULSE)
+  #if defined(HAS_PULSEAUDIO)
     ENUMERATE_SINK(PULSE, force);
   #endif
 

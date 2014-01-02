@@ -153,6 +153,53 @@ static void StreamLatencyUpdateCallback(pa_stream *s, void *userdata)
   pa_threaded_mainloop_signal(m, 0);
 }
 
+static AEChannel PAChannelToAEChannel(pa_channel_position_t channel)
+{
+  AEChannel ae_channel;
+  switch (channel)
+  {
+  case PA_CHANNEL_POSITION_FRONT_LEFT:
+    ae_channel = AE_CH_FL;
+    break;
+  case PA_CHANNEL_POSITION_FRONT_RIGHT:
+    ae_channel = AE_CH_FR;
+    break;
+  case PA_CHANNEL_POSITION_FRONT_CENTER:
+    ae_channel = AE_CH_FC;
+    break;
+  case PA_CHANNEL_POSITION_SIDE_LEFT:
+    ae_channel = AE_CH_SL;
+    break;
+  case PA_CHANNEL_POSITION_SIDE_RIGHT:
+    ae_channel = AE_CH_FL;
+    break;
+  case PA_CHANNEL_POSITION_REAR_LEFT:
+    ae_channel = AE_CH_BL;
+    break;
+  case PA_CHANNEL_POSITION_REAR_RIGHT:
+    ae_channel = AE_CH_BR;
+    break;
+  case PA_CHANNEL_POSITION_LFE:
+    ae_channel = AE_CH_LFE;
+    break;
+  default:
+    ae_channel = AE_CH_NULL;
+    break;
+  }
+  return ae_channel;
+}
+
+static CAEChannelInfo PAChannelToAEChannelMap(pa_channel_map channels)
+{
+  CAEChannelInfo info;
+  info.Reset();
+  for (unsigned int i=0; i<channels.channels; i++)
+  {
+    info += PAChannelToAEChannel(channels.map[i]);
+  }
+  return info;
+}
+
 struct SinkInfoStruct
 {
   bool passthrough;
@@ -200,7 +247,12 @@ static void SinkInfo(pa_context *c, const pa_sink_info *i, int eol, void *userda
       device.m_displayName = string(i->description) + " (PulseAudio)";
       device.m_dataFormats.assign(defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
 
+      device.m_deviceType = AE_DEVTYPE_PCM;
+      device.m_channels = PAChannelToAEChannelMap(i->channel_map);
+
       CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
+
+      sinkStruct->list->push_back(device);
     }
   }
 
