@@ -85,6 +85,7 @@ static pa_sample_format AEFormatToPulseFormat(AEDataFormat format)
     case AE_FMT_S32BE : return PA_SAMPLE_S32LE;
     case AE_FMT_S32LE : return PA_SAMPLE_S32LE;
     case AE_FMT_S32NE : return PA_SAMPLE_S32NE;
+    case AE_FMT_FLOAT : return PA_SAMPLE_FLOAT32;
 
     default:
       return PA_SAMPLE_INVALID;
@@ -210,10 +211,11 @@ struct SinkInfoStruct
 static void SinkInfo(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 {
   SinkInfoStruct *sinkStruct = (SinkInfoStruct *)userdata;
+  CAEDeviceInfo device;
 
   if (i && i->name)
   {
-    bool       add  = false;
+    bool add  = false;
     if(sinkStruct->passthrough)
     {
 #if PA_CHECK_VERSION(1,0,0)
@@ -232,19 +234,9 @@ static void SinkInfo(pa_context *c, const pa_sink_info *i, int eol, void *userda
 
     if(add)
     {
-      if(sinkStruct->list->size() == 0)
-      {
-        CAEDeviceInfo device;
-
-        device.m_deviceName = "default";
-        device.m_displayName = g_localizeStrings.Get(409) + " (PulseAudio)";
-        device.m_dataFormats.assign(defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
-      }
-
-      CAEDeviceInfo device;
-
       device.m_deviceName = string(i->name);
-      device.m_displayName = string(i->description) + " (PulseAudio)";
+      device.m_displayName = string(i->description);
+      device.m_displayNameExtra = std::string("PULSE: ").append(i->description);
       device.m_dataFormats.assign(defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
 
       device.m_deviceType = AE_DEVTYPE_PCM;
@@ -333,8 +325,8 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
     pa_sample_spec spec;
     spec.channels = m_Channels;
     spec.rate     = format.m_sampleRate;
+    //format.m_dataFormat = AE_FMT_S16NE;
     spec.format   = AEFormatToPulseFormat(format.m_dataFormat);
-    format.m_dataFormat = AE_FMT_S16NE;
 
     m_BytesPerSecond = pa_bytes_per_second(&spec);
     m_FrameSize = pa_frame_size(&spec);
@@ -401,6 +393,9 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_threaded_mainloop_unlock(m_MainLoop);
 
   m_IsAllocated = true;
+  format.m_frameSize = m_FrameSize;
+  format.m_frameSamples = format.m_frames * format.m_channelLayout.Count();
+  m_format = format;
 
   SetVolume(1.0);
   Cork(false);
@@ -472,7 +467,8 @@ unsigned int CAESinkPULSE::AddPackets(uint8_t *data, unsigned int frames, bool h
 
   pa_threaded_mainloop_lock(m_MainLoop);
 
-  unsigned int length = std::min((unsigned int)pa_stream_writable_size(m_Stream), (unsigned int)frames * m_BytesPerSecond);
+  unsigned int available = frames * m_format.m_frameSize;
+  unsigned int length = std::min((unsigned int)pa_stream_writable_size(m_Stream), available);
   int written = pa_stream_write(m_Stream, data, length, NULL, 0, PA_SEEK_RELATIVE);
 
   if (written < 0)
@@ -483,7 +479,7 @@ unsigned int CAESinkPULSE::AddPackets(uint8_t *data, unsigned int frames, bool h
 
   pa_threaded_mainloop_unlock(m_MainLoop);
 
-  return (unsigned int)(written / m_BytesPerSecond);
+  return (unsigned int)(written / m_format.m_frameSize);
 }
 
 void CAESinkPULSE::Drain()

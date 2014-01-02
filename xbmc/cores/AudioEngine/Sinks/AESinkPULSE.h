@@ -52,6 +52,7 @@ private:
 
   bool m_IsAllocated;
 
+  AEAudioFormat m_format;
   unsigned int m_BytesPerSecond;
   unsigned int m_BufferSize;
   unsigned int m_Channels;

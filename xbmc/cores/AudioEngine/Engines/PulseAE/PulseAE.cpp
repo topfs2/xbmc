@@ -174,6 +174,7 @@ bool CPulseAE::Initialize()
   }
 
   pa_threaded_mainloop_unlock(m_MainLoop);
+  m_format = format;
   return true;
 }
 
