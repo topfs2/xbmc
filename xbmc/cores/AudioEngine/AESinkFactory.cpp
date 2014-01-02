@@ -157,6 +157,10 @@ void CAESinkFactory::EnumerateEx(AESinkInfoList &list, bool force)
     ENUMERATE_SINK(PULSE, force);
   #endif
 
+  if (!list.empty()) {
+    return;
+  }
+
   #if defined(HAS_ALSA)
     ENUMERATE_SINK(ALSA, force);
   #endif
