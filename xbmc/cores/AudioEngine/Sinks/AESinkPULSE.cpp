@@ -365,7 +365,6 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
     pa_sample_spec spec;
     spec.channels = m_Channels;
     spec.rate     = format.m_sampleRate;
-    //format.m_dataFormat = AE_FMT_S16NE;
     spec.format   = AEFormatToPulseFormat(format.m_dataFormat);
 
     m_BytesPerSecond = pa_bytes_per_second(&spec);
@@ -393,8 +392,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_stream_set_write_callback(m_Stream, StreamRequestCallback, m_MainLoop);
   pa_stream_set_latency_update_callback(m_Stream, StreamLatencyUpdateCallback, m_MainLoop);
 
-  const char *sink = NULL;
-  if (pa_stream_connect_playback(m_Stream, sink, NULL, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE)), &m_Volume, NULL) < 0)
+  if (pa_stream_connect_playback(m_Stream, device.c_str(), NULL, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE)), &m_Volume, NULL) < 0)
   {
     CLog::Log(LOGERROR, "PulseAudio: Failed to connect stream to output");
     pa_threaded_mainloop_unlock(m_MainLoop);
@@ -509,10 +507,10 @@ unsigned int CAESinkPULSE::AddPackets(uint8_t *data, unsigned int frames, bool h
 
   unsigned int available = frames * m_format.m_frameSize;
   unsigned int length = std::min((unsigned int)pa_stream_writable_size(m_Stream), available);
-  int written = pa_stream_write(m_Stream, data, length, NULL, 0, PA_SEEK_RELATIVE);
+  int error = pa_stream_write(m_Stream, data, length, NULL, 0, PA_SEEK_RELATIVE);
   pa_threaded_mainloop_unlock(m_MainLoop);
 
-  if (written)
+  if (error)
   {
     CLog::Log(LOGERROR, "CPulseAudioDirectSound::AddPackets - pa_stream_write failed\n");
     return 0;
