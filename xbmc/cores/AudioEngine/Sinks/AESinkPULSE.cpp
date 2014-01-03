@@ -229,43 +229,64 @@ struct SinkInfoStruct
 static void SinkInfo(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 {
   SinkInfoStruct *sinkStruct = (SinkInfoStruct *)userdata;
-  CAEDeviceInfo device;
+  bool has_passthrough = false;
+  bool has_pcm = true;
+  CAEDeviceInfo pcm_device;
+  CAEDeviceInfo passthrough_device;
 
   if (i && i->name)
   {
-    bool add  = false;
-    if(sinkStruct->passthrough)
-    {
 #if PA_CHECK_VERSION(1,0,0)
+      has_pcm = false;
       for(int idx = 0; idx < i->n_formats; ++idx)
       {
-        if(!pa_format_info_is_pcm(i->formats[idx]))
+        // we currently only want to support AC3 and DTS
+        // we need to end with a pcm device
+        switch(i->formats[idx]->encoding)
         {
-          add = true;
+          case PA_ENCODING_PCM:
+          has_pcm = true;
+          case PA_ENCODING_AC3_IEC61937:
+          case PA_ENCODING_DTS_IEC61937:
+          has_passthrough = true;
+          break;
+
+          default:
           break;
         }
       }
 #endif
-    }
-    else
-      add = true;
-
-    if(add)
+    if(has_pcm)
     {
-      device.m_deviceName = string(i->name);
-      device.m_displayName = string(i->description);
-      device.m_displayNameExtra = std::string("PULSE: ").append(i->description);
-      device.m_dataFormats.assign(defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
+      pcm_device.m_deviceName = string(i->name);
+      pcm_device.m_displayName = string(i->description);
+      pcm_device.m_displayNameExtra = std::string("PULSE: ").append(i->description);
+      pcm_device.m_dataFormats.assign(defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
 
-      device.m_deviceType = AE_DEVTYPE_PCM;
-      device.m_channels = PAChannelToAEChannelMap(i->channel_map);
-      device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
+      pcm_device.m_deviceType = AE_DEVTYPE_PCM;
+      pcm_device.m_channels = PAChannelToAEChannelMap(i->channel_map);
+      pcm_device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
 
-      CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
+      CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", pcm_device.m_displayName.c_str(), pcm_device.m_deviceName.c_str());
 
-      sinkStruct->list->push_back(device);
+      sinkStruct->list->push_back(pcm_device);
     }
-  }
+    if(has_passthrough)
+    {
+      passthrough_device.m_deviceName = string(i->name);
+      passthrough_device.m_displayName = string(i->description);
+      passthrough_device.m_displayNameExtra = std::string("PULSE (Passthrough): ").append(i->description);
+      passthrough_device.m_dataFormats.push_back(AE_FMT_S16NE);
+
+      passthrough_device.m_deviceType = AE_DEVTYPE_HDMI;
+      passthrough_device.m_channels = PAChannelToAEChannelMap(i->channel_map);
+      passthrough_device.m_sampleRates.push_back(48000);
+
+      CLog::Log(LOGDEBUG, "PulseAudio (Passthrough): Found %s with devicestring %s", passthrough_device.m_displayName.c_str(), passthrough_device.m_deviceName.c_str());
+
+      sinkStruct->list->push_back(passthrough_device);
+    }
+ }
 
   pa_threaded_mainloop_signal(sinkStruct->mainloop, 0);
 }
