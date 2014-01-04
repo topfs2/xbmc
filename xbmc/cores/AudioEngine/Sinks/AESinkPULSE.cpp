@@ -258,6 +258,16 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
 {
   SinkInfoStruct *sinkStruct = (SinkInfoStruct *)userdata;
 
+  //add a default device first
+  CAEDeviceInfo defaultDevice;
+  defaultDevice.m_deviceName = std::string("Default");
+  defaultDevice.m_displayName = std::string("Default");
+  defaultDevice.m_displayNameExtra = std::string("PULSE: (Default)");
+  defaultDevice.m_dataFormats.insert(defaultDevice.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
+  defaultDevice.m_channels = CAEChannelInfo(AE_CH_LAYOUT_2_0);
+  defaultDevice.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
+  sinkStruct->list->push_back(defaultDevice);
+
   if (i && i->name)
   {
     CAEDeviceInfo device;
@@ -302,7 +312,6 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
     CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
     sinkStruct->list->push_back(device);
  }
-
   pa_threaded_mainloop_signal(sinkStruct->mainloop, 0);
 }
 
@@ -395,11 +404,13 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_stream_set_write_callback(m_Stream, StreamRequestCallback, m_MainLoop);
   pa_stream_set_latency_update_callback(m_Stream, StreamLatencyUpdateCallback, m_MainLoop);
 
+  bool isDefaultDevice = (device == "Default");
+
   pa_buffer_attr buffer_attr;
   SinkInfoStruct sinkStruct;
   sinkStruct.mainloop = m_MainLoop;
   sinkStruct.isHWDevice = false;
-  WaitForOperation(pa_context_get_sink_info_by_name(m_Context, device.c_str(),SinkInfoCallback, &sinkStruct), m_MainLoop, "Get Sink Info");
+  WaitForOperation(pa_context_get_sink_info_by_name(m_Context, isDefaultDevice ? NULL : device.c_str(),SinkInfoCallback, &sinkStruct), m_MainLoop, "Get Sink Info");
   // 200ms max latency
   // 50ms min packet size
   if(sinkStruct.isHWDevice)
@@ -414,7 +425,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
     buffer_attr.fragsize = (uint32_t) latency;
   }
 
-  if (pa_stream_connect_playback(m_Stream, device.c_str(), sinkStruct.isHWDevice ? &buffer_attr : NULL, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_ADJUST_LATENCY)), &m_Volume, NULL) < 0)
+  if (pa_stream_connect_playback(m_Stream, isDefaultDevice ? NULL : device.c_str(), sinkStruct.isHWDevice ? &buffer_attr : NULL, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_ADJUST_LATENCY)), &m_Volume, NULL) < 0)
   {
     CLog::Log(LOGERROR, "PulseAudio: Failed to connect stream to output");
     pa_threaded_mainloop_unlock(m_MainLoop);
