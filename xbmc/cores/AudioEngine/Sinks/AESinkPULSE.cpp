@@ -256,17 +256,25 @@ static CAEChannelInfo PAChannelToAEChannelMap(pa_channel_map channels)
 
 static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 {
+
+  if(eol)
+    return;
+
   SinkInfoStruct *sinkStruct = (SinkInfoStruct *)userdata;
 
-  //add a default device first
-  CAEDeviceInfo defaultDevice;
-  defaultDevice.m_deviceName = std::string("Default");
-  defaultDevice.m_displayName = std::string("Default");
-  defaultDevice.m_displayNameExtra = std::string("PULSE: (Default)");
-  defaultDevice.m_dataFormats.insert(defaultDevice.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
-  defaultDevice.m_channels = CAEChannelInfo(AE_CH_LAYOUT_2_0);
-  defaultDevice.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
-  sinkStruct->list->push_back(defaultDevice);
+  if(sinkStruct && sinkStruct->list->empty())
+  {
+	//add a default device first
+	CAEDeviceInfo defaultDevice;
+	defaultDevice.m_deviceName = std::string("Default");
+	defaultDevice.m_displayName = std::string("Default");
+	defaultDevice.m_displayNameExtra = std::string("PULSE: (Default)");
+	defaultDevice.m_dataFormats.insert(defaultDevice.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
+	defaultDevice.m_channels = CAEChannelInfo(AE_CH_LAYOUT_2_0);
+	defaultDevice.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
+	defaultDevice.m_deviceType = AE_DEVTYPE_PCM;
+	sinkStruct->list->push_back(defaultDevice);
+  }
 
   if (i && i->name)
   {
