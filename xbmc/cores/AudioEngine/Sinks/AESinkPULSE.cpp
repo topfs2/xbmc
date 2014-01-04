@@ -254,7 +254,7 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
     device.m_deviceName = string(i->name);
     device.m_displayName = string(i->description);
     device.m_displayNameExtra = std::string("PULSE: ").append(i->description);
-    device.m_deviceType = AE_DEVTYPE_PCM;
+    unsigned int device_type = AE_DEVTYPE_PCM; //0
 
     device.m_channels = PAChannelToAEChannelMap(i->channel_map);
     device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
@@ -265,18 +265,25 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
       {
         case PA_ENCODING_AC3_IEC61937:
           device.m_dataFormats.push_back(AE_FMT_AC3);
+          device_type |= AE_DEVTYPE_IEC958;
           break;
         case PA_ENCODING_DTS_IEC61937:
           device.m_dataFormats.push_back(AE_FMT_DTS);
+          device_type |= AE_DEVTYPE_IEC958;
           break;
         case PA_ENCODING_EAC3_IEC61937:
           device.m_dataFormats.push_back(AE_FMT_EAC3);
+          device_type |= AE_DEVTYPE_IEC958;
           break;
         case PA_ENCODING_PCM:
           device.m_dataFormats.insert(device.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
           break;
       }
     }
+    if (device_type > AE_DEVTYPE_PCM)
+      device.m_deviceType = AE_DEVTYPE_IEC958;
+    else
+      device.m_deviceType = AE_DEVTYPE_PCM;
 
     CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
     sinkStruct->list->push_back(device);
