@@ -343,7 +343,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   info[0]->encoding = AEFormatToPulseEncoding(format.m_dataFormat);
   pa_format_info_set_sample_format(info[0], AEFormatToPulseFormat(format.m_dataFormat));
   pa_format_info_set_channels(info[0], m_Channels);
-  unsigned int samplerate = AE_IS_RAW(format.m_dataFormat) ? 48000 : format.m_sampleRate;
+  unsigned int samplerate = AE_IS_RAW(format.m_dataFormat) ? format.m_encodedRate : format.m_sampleRate;
   pa_format_info_set_rate(info[0], samplerate);
 
   if (!pa_format_info_valid(info[0]))
