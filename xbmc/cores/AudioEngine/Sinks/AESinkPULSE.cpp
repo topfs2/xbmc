@@ -330,6 +330,7 @@ CAESinkPULSE::CAESinkPULSE()
 {
   m_IsAllocated = false;
   m_BytesPerSecond = 0;
+  m_FrameSize = 0;
   m_BufferSize = 0;
   m_Channels = 0;
   m_Stream = NULL;
@@ -475,6 +476,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   format.m_frameSize = m_FrameSize;
   format.m_frameSamples = format.m_frames * format.m_channelLayout.Count();
   m_format = format;
+  format.m_dataFormat = AE_IS_RAW(format.m_dataFormat) ? AE_FMT_S16NE : format.m_dataFormat;
 
   SetVolume(1.0);
   Cork(false);
