@@ -305,7 +305,7 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
           device_type |= AE_DEVTYPE_IEC958;
           break;
         case PA_ENCODING_PCM:
-          device.m_dataFormats.insert(device.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
+          device.m_dataFormats.insert(device.m_dataFormats.begin(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
           break;
         default:
           break;
