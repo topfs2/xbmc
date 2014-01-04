@@ -278,6 +278,8 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
         case PA_ENCODING_PCM:
           device.m_dataFormats.insert(device.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
           break;
+        default:
+          break;
       }
     }
     // passthrough is only working when device has Stereo channel config
