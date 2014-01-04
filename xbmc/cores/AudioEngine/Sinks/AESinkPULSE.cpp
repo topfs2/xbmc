@@ -383,7 +383,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_buffer_attr buffer_attr;
   // 200ms max latency
   // 50ms min packet size
-  unsigned int latency = samplerate / 5 * format.m_channelLayout.Count() * (unsigned int) std::ceil(CAEUtil::DataFormatToBits(format.m_dataFormat) / 8.0);
+  unsigned int latency = m_BytesPerSecond / 5;
   unsigned int process_time = latency / 4;
   memset(&buffer_attr, 0, sizeof(buffer_attr));
   buffer_attr.tlength = (uint32_t) latency;
