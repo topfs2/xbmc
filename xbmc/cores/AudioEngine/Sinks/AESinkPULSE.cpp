@@ -82,7 +82,7 @@ static pa_sample_format AEFormatToPulseFormat(AEDataFormat format)
     case AE_FMT_S24LE4: return PA_SAMPLE_S24_32LE;
     case AE_FMT_S24BE4: return PA_SAMPLE_S24_32BE;
     case AE_FMT_S24NE4: return PA_SAMPLE_S24_32NE;
-    case AE_FMT_S32BE : return PA_SAMPLE_S32LE;
+    case AE_FMT_S32BE : return PA_SAMPLE_S32BE;
     case AE_FMT_S32LE : return PA_SAMPLE_S32LE;
     case AE_FMT_S32NE : return PA_SAMPLE_S32NE;
     case AE_FMT_FLOAT : return PA_SAMPLE_FLOAT32;
