@@ -87,8 +87,26 @@ static pa_sample_format AEFormatToPulseFormat(AEDataFormat format)
     case AE_FMT_S32NE : return PA_SAMPLE_S32NE;
     case AE_FMT_FLOAT : return PA_SAMPLE_FLOAT32;
 
+    case AE_FMT_AC3:
+    case AE_FMT_DTS:
+    case AE_FMT_EAC3:
+      return PA_SAMPLE_S16NE;
+
     default:
       return PA_SAMPLE_INVALID;
+  }
+}
+
+static pa_encoding AEFormatToPulseEncoding(AEDataFormat format)
+{
+  switch (format)
+  {
+    case AE_FMT_AC3   : return PA_ENCODING_AC3_IEC61937;
+    case AE_FMT_DTS   : return PA_ENCODING_DTS_IEC61937;
+    case AE_FMT_EAC3  : return PA_ENCODING_EAC3_IEC61937;
+
+    default:
+      return PA_ENCODING_PCM;
   }
 }
 
@@ -221,71 +239,47 @@ static CAEChannelInfo PAChannelToAEChannelMap(pa_channel_map channels)
 
 struct SinkInfoStruct
 {
-  bool passthrough;
   AEDeviceInfoList *list;
   pa_threaded_mainloop *mainloop;
 };
 
-static void SinkInfo(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
+static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 {
   SinkInfoStruct *sinkStruct = (SinkInfoStruct *)userdata;
-  bool has_passthrough = false;
-  bool has_pcm = true;
-  CAEDeviceInfo pcm_device;
-  CAEDeviceInfo passthrough_device;
 
   if (i && i->name)
   {
-#if PA_CHECK_VERSION(1,0,0)
-      has_pcm = false;
-      for(int idx = 0; idx < i->n_formats; ++idx)
+    CAEDeviceInfo device;
+
+    device.m_deviceName = string(i->name);
+    device.m_displayName = string(i->description);
+    device.m_displayNameExtra = std::string("PULSE: ").append(i->description);
+    device.m_deviceType = AE_DEVTYPE_PCM;
+
+    device.m_channels = PAChannelToAEChannelMap(i->channel_map);
+    device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
+
+    for (unsigned int j = 0; j < i->n_formats; j++)
+    {
+      switch(i->formats[j]->encoding)
       {
-        // we currently only want to support AC3 and DTS
-        // we need to end with a pcm device
-        switch(i->formats[idx]->encoding)
-        {
-          case PA_ENCODING_PCM:
-          has_pcm = true;
-          case PA_ENCODING_AC3_IEC61937:
-          case PA_ENCODING_DTS_IEC61937:
-          has_passthrough = true;
+        case PA_ENCODING_AC3_IEC61937:
+          device.m_dataFormats.push_back(AE_FMT_AC3);
           break;
-
-          default:
+        case PA_ENCODING_DTS_IEC61937:
+          device.m_dataFormats.push_back(AE_FMT_DTS);
           break;
-        }
+        case PA_ENCODING_EAC3_IEC61937:
+          device.m_dataFormats.push_back(AE_FMT_EAC3);
+          break;
+        case PA_ENCODING_PCM:
+          device.m_dataFormats.insert(device.m_dataFormats.end(), defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
+          break;
       }
-#endif
-    if(has_pcm)
-    {
-      pcm_device.m_deviceName = string(i->name);
-      pcm_device.m_displayName = string(i->description);
-      pcm_device.m_displayNameExtra = std::string("PULSE: ").append(i->description);
-      pcm_device.m_dataFormats.assign(defaultDataFormats, defaultDataFormats + sizeof(defaultDataFormats) / sizeof(defaultDataFormats[0]));
-
-      pcm_device.m_deviceType = AE_DEVTYPE_PCM;
-      pcm_device.m_channels = PAChannelToAEChannelMap(i->channel_map);
-      pcm_device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
-
-      CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", pcm_device.m_displayName.c_str(), pcm_device.m_deviceName.c_str());
-
-      sinkStruct->list->push_back(pcm_device);
     }
-    if(has_passthrough)
-    {
-      passthrough_device.m_deviceName = string(i->name);
-      passthrough_device.m_displayName = string(i->description);
-      passthrough_device.m_displayNameExtra = std::string("PULSE (Passthrough): ").append(i->description);
-      passthrough_device.m_dataFormats.push_back(AE_FMT_S16NE);
 
-      passthrough_device.m_deviceType = AE_DEVTYPE_HDMI;
-      passthrough_device.m_channels = PAChannelToAEChannelMap(i->channel_map);
-      passthrough_device.m_sampleRates.push_back(48000);
-
-      CLog::Log(LOGDEBUG, "PulseAudio (Passthrough): Found %s with devicestring %s", passthrough_device.m_displayName.c_str(), passthrough_device.m_deviceName.c_str());
-
-      sinkStruct->list->push_back(passthrough_device);
-    }
+    CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
+    sinkStruct->list->push_back(device);
  }
 
   pa_threaded_mainloop_signal(sinkStruct->mainloop, 0);
@@ -319,8 +313,6 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   m_Stream = NULL;
   m_Context = NULL;
 
-  bool passthrough = false; // TODO Add proper passthrough */
-
   if (!SetupContext(NULL, &m_Context, &m_MainLoop))
   {
     CLog::Log(LOGERROR, "PulseAudio: Failed to create context");
@@ -338,47 +330,34 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
 
   pa_cvolume_reset(&m_Volume, m_Channels);
 
-  if(passthrough)
+  pa_format_info *info[1];
+  info[0] = pa_format_info_new();
+  info[0]->encoding = AEFormatToPulseEncoding(format.m_dataFormat);
+  pa_format_info_set_sample_format(info[0], AEFormatToPulseFormat(format.m_dataFormat));
+  pa_format_info_set_channels(info[0], m_Channels);
+  pa_format_info_set_rate(info[0], AE_IS_RAW(format.m_dataFormat) ? 48000 : format.m_sampleRate);
+
+  if (!pa_format_info_valid(info[0]))
   {
-/*
-#if PA_CHECK_VERSION(1,0,0)
-    pa_format_info *info[1];
-    info[0] = pa_format_info_new();
-    switch(encoded)
-    {
-      case ENCODED_IEC61937_AC3 : info[0]->encoding = PA_ENCODING_AC3_IEC61937 ; break;
-      case ENCODED_IEC61937_DTS : info[0]->encoding = PA_ENCODING_DTS_IEC61937 ; break;
-      case ENCODED_IEC61937_EAC3: info[0]->encoding = PA_ENCODING_EAC3_IEC61937; break;
-      case ENCODED_IEC61937_MPEG: info[0]->encoding = PA_ENCODING_MPEG_IEC61937; break;
-      default:                    info[0]->encoding = PA_ENCODING_INVALID      ; break;
-    }
-    pa_format_info_set_rate(info[0], m_uiSamplesPerSec);
-    pa_format_info_set_channels(info[0], m_uiChannels);
-    pa_format_info_set_sample_format(info[0], PA_SAMPLE_S16NE);
-    m_Stream = pa_stream_new_extended(m_Context, "audio stream", info, 1, NULL);
-    pa_format_info_free(info[0]);
-#endif
-*/
+    CLog::Log(LOGERROR, "PulseAudio: Invalid format info");
+    Deinitialize();
+    return false;
   }
-  else
+
+  pa_sample_spec spec;
+  pa_format_info_to_sample_spec(info[0], &spec, &map);
+  if (!pa_sample_spec_valid(&spec))
   {
-    pa_sample_spec spec;
-    spec.channels = m_Channels;
-    spec.rate     = format.m_sampleRate;
-    spec.format   = AEFormatToPulseFormat(format.m_dataFormat);
-
-    m_BytesPerSecond = pa_bytes_per_second(&spec);
-    m_FrameSize = pa_frame_size(&spec);
-
-    if (!pa_sample_spec_valid(&spec))
-    {
-      CLog::Log(LOGERROR, "PulseAudio: Invalid sample spec");
-      Deinitialize();
-      return false;
-    }
-
-    m_Stream = pa_stream_new(m_Context, "audio stream", &spec, &map);
+    CLog::Log(LOGERROR, "PulseAudio: Invalid sample spec");
+    Deinitialize();
+    return false;
   }
+
+  m_BytesPerSecond = pa_bytes_per_second(&spec);
+  m_FrameSize = pa_frame_size(&spec);
+
+  m_Stream = pa_stream_new_extended(m_Context, "audio stream", info, 1, NULL);
+  pa_format_info_free(info[0]);
 
   if (m_Stream == NULL)
   {
@@ -563,10 +542,9 @@ void CAESinkPULSE::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   pa_threaded_mainloop_lock(mainloop);
 
   SinkInfoStruct sinkStruct;
-  sinkStruct.passthrough = false;
   sinkStruct.mainloop = mainloop;
   sinkStruct.list = &list;
-  WaitForOperation(pa_context_get_sink_info_list(context, SinkInfo, &sinkStruct), mainloop, "EnumerateAudioSinks");
+  WaitForOperation(pa_context_get_sink_info_list(context, SinkInfoRequestCallback, &sinkStruct), mainloop, "EnumerateAudioSinks");
 
   pa_threaded_mainloop_unlock(mainloop);
 
