@@ -23,6 +23,7 @@
 
 #include "cores/AudioEngine/Interfaces/AESink.h"
 #include "Utils/AEDeviceInfo.h"
+#include "Utils/AEUtil.h"
 #include <pulse/pulseaudio.h>
 
 class CAESinkPULSE : public IAESink

@@ -335,7 +335,8 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   info[0]->encoding = AEFormatToPulseEncoding(format.m_dataFormat);
   pa_format_info_set_sample_format(info[0], AEFormatToPulseFormat(format.m_dataFormat));
   pa_format_info_set_channels(info[0], m_Channels);
-  pa_format_info_set_rate(info[0], AE_IS_RAW(format.m_dataFormat) ? 48000 : format.m_sampleRate);
+  unsigned int samplerate = AE_IS_RAW(format.m_dataFormat) ? 48000 : format.m_sampleRate;
+  pa_format_info_set_rate(info[0], samplerate);
 
   if (!pa_format_info_valid(info[0]))
   {
@@ -371,7 +372,19 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_stream_set_write_callback(m_Stream, StreamRequestCallback, m_MainLoop);
   pa_stream_set_latency_update_callback(m_Stream, StreamLatencyUpdateCallback, m_MainLoop);
 
-  if (pa_stream_connect_playback(m_Stream, device.c_str(), NULL, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE)), &m_Volume, NULL) < 0)
+  pa_buffer_attr buffer_attr;
+  // 200ms max latency
+  // 50ms min packet size
+  unsigned int latency = samplerate / 5 * format.m_channelLayout.Count() * (unsigned int) std::ceil(CAEUtil::DataFormatToBits(format.m_dataFormat) / 8.0);
+  unsigned int process_time = latency / 4;
+  memset(&buffer_attr, 0, sizeof(buffer_attr));
+  buffer_attr.tlength = (uint32_t) latency;
+  buffer_attr.minreq = (uint32_t) process_time;
+  buffer_attr.maxlength = (uint32_t) -1;
+  buffer_attr.prebuf = (uint32_t) -1;
+  buffer_attr.fragsize = (uint32_t) latency;
+
+  if (pa_stream_connect_playback(m_Stream, device.c_str(), &buffer_attr, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_ADJUST_LATENCY)), &m_Volume, NULL) < 0)
   {
     CLog::Log(LOGERROR, "PulseAudio: Failed to connect stream to output");
     pa_threaded_mainloop_unlock(m_MainLoop);
