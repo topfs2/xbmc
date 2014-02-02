@@ -425,6 +425,23 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           }
           msg->Reply(CActiveAEControlProtocol::ACC);
           return;
+        case CActiveAEControlProtocol::DEVICECHANGE:
+          UnconfigureSink();
+          m_sink.EnumerateSinkList(true);
+          LoadSettings();
+          m_extError = false;
+          Configure();
+          if (!m_extError)
+          {
+            m_state = AE_TOP_CONFIGURED_PLAY;
+            m_extTimeout = 0;
+          }
+          else
+          {
+            m_state = AE_TOP_ERROR;
+            m_extTimeout = 500;
+          }
+          return;
         case CActiveAEControlProtocol::PAUSESTREAM:
           CActiveAEStream *stream;
           stream = *(CActiveAEStream**)msg->data;
@@ -2268,6 +2285,11 @@ void CActiveAE::KeepConfiguration(unsigned int millis)
 {
   unsigned int timeMs = millis;
   m_controlPort.SendOutMessage(CActiveAEControlProtocol::KEEPCONFIG, &timeMs, sizeof(unsigned int));
+}
+
+void CActiveAE::DeviceChange()
+{
+  m_controlPort.SendOutMessage(CActiveAEControlProtocol::DEVICECHANGE);
 }
 
 void CActiveAE::OnLostDevice()

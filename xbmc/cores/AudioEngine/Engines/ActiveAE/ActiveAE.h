@@ -73,6 +73,7 @@ public:
     INIT = 0,
     RECONFIGURE,
     SUSPEND,
+    DEVICECHANGE,
     MUTE,
     VOLUME,
     PAUSESTREAM,
@@ -224,6 +225,7 @@ public:
   virtual bool SupportsQualityLevel(enum AEQuality level);
   virtual bool IsSettingVisible(const std::string &settingId);
   virtual void KeepConfiguration(unsigned int millis);
+  virtual void DeviceChange();
 
   virtual void RegisterAudioCallback(IAudioCallback* pCallback);
   virtual void UnregisterAudioCallback();
