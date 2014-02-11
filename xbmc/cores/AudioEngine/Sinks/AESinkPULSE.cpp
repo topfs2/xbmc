@@ -192,29 +192,25 @@ static void StreamLatencyUpdateCallback(pa_stream *s, void *userdata)
 
 static void SinkChangedCallback(pa_context *c, pa_subscription_event_type_t t, uint32_t idx, void *userdata)
 {
-  CAESinkPULSE* p = (CAESinkPULSE*) userdata;
-  if(!p)
-    return;
+  pa_threaded_mainloop *m = (pa_threaded_mainloop *)userdata;
 
-  CSingleLock lock(p->m_sec);
-  if (p->InitDone())
+  if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_NEW)
   {
-    if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_NEW)
-    {
-       CLog::Log(LOGDEBUG, "Sink appeared");
-       CAEFactory::DeviceChange();
-    }
-    else if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
-    {
-      CLog::Log(LOGDEBUG, "Sink removed");
-      CAEFactory::DeviceChange();
-    }
-    else if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
-    {
-      CLog::Log(LOGDEBUG, "Sink changed");
-      //CAEFactory::DeviceChange();
-    }    
+    CLog::Log(LOGDEBUG, "Sink appeared");
+    CAEFactory::DeviceChange();
   }
+  else if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
+  {
+    CLog::Log(LOGDEBUG, "Sink removed");
+    CAEFactory::DeviceChange();
+  }
+  else if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
+  {
+    CLog::Log(LOGDEBUG, "Sink changed");
+    //CAEFactory::DeviceChange();
+  }
+
+  pa_threaded_mainloop_signal(m, 0);
 }
 
 struct SinkInfoStruct
@@ -433,12 +429,7 @@ CAESinkPULSE::~CAESinkPULSE()
 
 bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
 {
-  
-  {
-    CSingleLock lock(m_sec);
-    m_IsAllocated = false;
-  }
-  
+  m_IsAllocated = false;
   m_BytesPerSecond = 0;
   m_BufferSize = 0;
   m_Channels = 0;
@@ -448,21 +439,10 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   if (!SetupContext(NULL, &m_Context, &m_MainLoop))
   {
     CLog::Log(LOGNOTICE, "PulseAudio might not be running. Context was not created.");
-    Deinitialize();
     return false;
   }
 
   pa_threaded_mainloop_lock(m_MainLoop);
-
-  {
-    // Register Callback for Sink changes
-    CSingleLock lock(m_sec);
-    pa_context_set_subscribe_callback(m_Context, SinkChangedCallback, this);
-    const pa_subscription_mask_t mask = PA_SUBSCRIPTION_MASK_SINK;
-    pa_operation *op = pa_context_subscribe(m_Context, mask, NULL, this);
-    if (op != NULL)
-      pa_operation_unref(op);
-  }
 
   struct pa_channel_map map;
   pa_channel_map_init(&map);
@@ -635,6 +615,13 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
     format.m_frames = packetSize / frameSize;
   }
 
+  // Register Callback for Sink changes
+  pa_context_set_subscribe_callback(m_Context, SinkChangedCallback, this);
+  const pa_subscription_mask_t mask = PA_SUBSCRIPTION_MASK_SINK;
+  pa_operation *op = pa_context_subscribe(m_Context, mask, NULL, this);
+  if (op != NULL)
+    pa_operation_unref(op);
+
   pa_threaded_mainloop_unlock(m_MainLoop);
   
   format.m_frameSize = frameSize;
@@ -643,44 +630,17 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   format.m_dataFormat = passthrough ? AE_FMT_S16NE : format.m_dataFormat;
 
   Pause(false);
-  {
-    CSingleLock lock(m_sec);
-    m_IsAllocated = true;
-  }
+  m_IsAllocated = true;
 
   return true;
 }
 
 void CAESinkPULSE::Deinitialize()
 {
-  CSingleLock lock(m_sec);
-  m_IsAllocated = false;
+  CLog::Log(LOGINFO, "PulseAudio: Enter Deinitialize");
+  pa_threaded_mainloop_lock(m_MainLoop);
 
-  if (m_Stream)
-    Drain();
-
-  if (m_MainLoop)
-    pa_threaded_mainloop_stop(m_MainLoop);
-
-  if (m_Stream)
-  {
-    pa_stream_disconnect(m_Stream);
-    pa_stream_unref(m_Stream);
-    m_Stream = NULL;
-  }
-
-  if (m_Context)
-  {
-    pa_context_disconnect(m_Context);
-    pa_context_unref(m_Context);
-    m_Context = NULL;
-  }
-
-  if (m_MainLoop)
-  {
-    pa_threaded_mainloop_free(m_MainLoop);
-    m_MainLoop = NULL;
-  }
+  InternalDeinitialize();
 }
 
 double CAESinkPULSE::GetDelay()
@@ -887,5 +847,46 @@ bool CAESinkPULSE::SetupContext(const char *host, pa_context **context, pa_threa
 
   pa_threaded_mainloop_unlock(*mainloop);
   return true;
+}
+
+void CAESinkPULSE::InternalDeinitialize()
+{
+  CLog::Log(LOGINFO, "PulseAudio: Enter inner deinit");
+  m_IsAllocated = false;
+
+  if (m_Stream) {
+    CLog::Log(LOGINFO, "PulseAudio: Draining");
+    WaitForOperation(pa_stream_drain(m_Stream, NULL, NULL), m_MainLoop, "Drain");
+  }
+
+  if (m_Stream)
+  {
+    CLog::Log(LOGINFO, "PulseAudio: Disconnect stream");
+    pa_stream_disconnect(m_Stream);
+    pa_stream_unref(m_Stream);
+    m_Stream = NULL;
+    CLog::Log(LOGINFO, "PulseAudio: Disconnected stream");
+  }
+
+  if (m_Context)
+  {
+    CLog::Log(LOGINFO, "PulseAudio: Disconnect context");
+    pa_context_disconnect(m_Context);
+    pa_context_unref(m_Context);
+    m_Context = NULL;
+    CLog::Log(LOGINFO, "PulseAudio: Disconnected context");
+  }
+
+  if (m_MainLoop)
+  {
+    CLog::Log(LOGINFO, "PulseAudio: Terminating mainloop");
+    pa_threaded_mainloop_unlock(m_MainLoop);
+    pa_threaded_mainloop_stop(m_MainLoop);
+    pa_threaded_mainloop_free(m_MainLoop);
+    m_MainLoop = NULL;
+    CLog::Log(LOGINFO, "PulseAudio: Terminated mainloop");
+  }
+
+  CLog::Log(LOGINFO, "PulseAudio: End inner deinit");
 }
 #endif

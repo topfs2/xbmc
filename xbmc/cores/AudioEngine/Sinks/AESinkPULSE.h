@@ -26,7 +26,6 @@
 #include "Utils/AEDeviceInfo.h"
 #include "Utils/AEUtil.h"
 #include <pulse/pulseaudio.h>
-#include "threads/CriticalSection.h"
 
 class CAESinkPULSE : public IAESink
 {
@@ -48,14 +47,14 @@ public:
   virtual void SetVolume(float volume);
 
   static void EnumerateDevicesEx(AEDeviceInfoList &list, bool force = false);
-  inline bool InitDone() { return m_IsAllocated; };
-  CCriticalSection m_sec;
 private:
   bool Pause(bool pause);
   static inline bool WaitForOperation(pa_operation *op, pa_threaded_mainloop *mainloop, const char *LogEntry);
   static bool SetupContext(const char *host, pa_context **context, pa_threaded_mainloop **mainloop);
 
-  bool m_IsAllocated;
+  void InternalDeinitialize();
+
+  volatile bool m_IsAllocated;
 
   AEAudioFormat m_format;
   unsigned int m_BytesPerSecond;
