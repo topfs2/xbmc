@@ -4083,6 +4083,7 @@ PlayBackRet CApplication::PlayFile(const CFileItem& item, bool bRestart)
     if (item.IsVideo())
     {
       CJobManager::GetInstance().PauseJobs();
+      g_windowManager.ActivateWindow(WINDOW_FULLSCREEN_VIDEO);
     }
 
     // don't hold graphicscontext here since player
