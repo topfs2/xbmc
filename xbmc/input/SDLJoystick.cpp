@@ -30,7 +30,7 @@
 #include <math.h>
 
 #ifdef HAS_SDL_JOYSTICK
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 using namespace std;
 
@@ -76,11 +76,8 @@ void CJoystick::Initialize()
   if (m_Joysticks.size()>0)
   {
     for(size_t idJoy = 0; idJoy < m_Joysticks.size(); idJoy++)
-    {
-      // any joysticks unplugged?
-      if(SDL_JoystickOpened(idJoy))
-        SDL_JoystickClose(m_Joysticks[idJoy]);
-    }
+      SDL_JoystickClose(m_Joysticks[idJoy]);
+
     m_Joysticks.clear();
     m_JoyId = -1;
   }
@@ -92,57 +89,9 @@ void CJoystick::Initialize()
   if (SDL_NumJoysticks()>0)
   {
     // load joystick names and open all connected joysticks
-    for (int i = 0 ; i<SDL_NumJoysticks() ; i++)
-    {
-      SDL_Joystick *joy = SDL_JoystickOpen(i);
-
-#if defined(TARGET_DARWIN)
-      // On OS X, the 360 controllers are handled externally, since the SDL code is
-      // really buggy and doesn't handle disconnects.
-      //
-      if (std::string(SDL_JoystickName(i)).find("360") != std::string::npos)
-      {
-        CLog::Log(LOGNOTICE, "Ignoring joystick: %s", SDL_JoystickName(i));
-        continue;
-      }
-#endif
-      if (joy)
-      {
-        // Some (Microsoft) Keyboards are recognized as Joysticks by modern kernels
-        // Don't enumerate them
-        // https://bugs.launchpad.net/ubuntu/+source/linux/+bug/390959
-        // NOTICE: Enabled Joystick: Microsoft Wired Keyboard 600
-        // Details: Total Axis: 37 Total Hats: 0 Total Buttons: 57
-        // NOTICE: Enabled Joystick: Microsoft Microsoft® 2.4GHz Transceiver v6.0
-        // Details: Total Axis: 37 Total Hats: 0 Total Buttons: 57
-        // also checks if we have at least 1 button, fixes 
-        // NOTICE: Enabled Joystick: ST LIS3LV02DL Accelerometer
-        // Details: Total Axis: 3 Total Hats: 0 Total Buttons: 0
-        int num_axis = SDL_JoystickNumAxes(joy);
-        int num_buttons = SDL_JoystickNumButtons(joy);
-        if ((num_axis > 20 && num_buttons > 50) || num_buttons == 0)
-        {
-          CLog::Log(LOGNOTICE, "Ignoring Joystick %s Axis: %d Buttons: %d: invalid device properties",
-           SDL_JoystickName(i), num_axis, num_buttons);
-        }
-        else
-        {
-          m_JoystickNames.push_back(string(SDL_JoystickName(i)));
-          CLog::Log(LOGNOTICE, "Enabled Joystick: %s", SDL_JoystickName(i));
-          CLog::Log(LOGNOTICE, "Details: Total Axis: %d Total Hats: %d Total Buttons: %d",
-            num_axis, SDL_JoystickNumHats(joy), num_buttons);
-          m_Joysticks.push_back(joy);
-        }
-      }
-      else
-      {
-        m_JoystickNames.push_back(string(""));
-      }
-    }
+    for (int i = 0 ; i < SDL_NumJoysticks(); i++)
+      AddJoystick(i);
   }
-  
-  // disable joystick events, since we'll be polling them
-  SDL_JoystickEventState(SDL_DISABLE);
 }
 
 void CJoystick::Reset(bool axis /*=false*/)
@@ -173,7 +122,7 @@ void CJoystick::Update()
   SDL_JoystickUpdate();
 
   // go through all joysticks
-  for (int j = 0; j<numj; j++)
+  for (int j = 0; j < numj; j++)
   {
     SDL_Joystick *joy = m_Joysticks[j];
     int numb = SDL_JoystickNumButtons(joy);
@@ -188,7 +137,7 @@ void CJoystick::Update()
     {
       if (SDL_JoystickGetButton(joy, b))
       {
-        m_JoyId = SDL_JoystickIndex(joy);
+        m_JoyId = GetJoystickIndex(joy);
         buttonId = b+1;
         j = numj-1;
         break;
@@ -200,7 +149,7 @@ void CJoystick::Update()
       hatval = SDL_JoystickGetHat(joy, h);
       if (hatval != SDL_HAT_CENTERED)
       {
-        m_JoyId = SDL_JoystickIndex(joy);
+        m_JoyId = GetJoystickIndex(joy);
         hatId = h + 1;
         m_HatState = hatval;
         j = numj-1;
@@ -226,7 +175,7 @@ void CJoystick::Update()
     m_AxisId = GetAxisWithMaxAmount();
     if (m_AxisId)
     {
-      m_JoyId = SDL_JoystickIndex(joy);
+      m_JoyId = GetJoystickIndex(joy);
       j = numj-1;
       break;
     }
@@ -271,7 +220,6 @@ void CJoystick::Update()
     }
     SetButtonActive();
   }
-
 }
 
 void CJoystick::Update(SDL_Event& joyEvent)
@@ -337,6 +285,17 @@ void CJoystick::Update(SDL_Event& joyEvent)
     m_pressTicksButton = 0;
     SetButtonActive(false);
     CLog::Log(LOGDEBUG, "Joystick %d button %d Up", joyEvent.jbutton.which, m_ButtonId);
+    break;
+
+  case SDL_JOYDEVICEADDED:
+    CLog::Log(LOGDEBUG, "Joystick %d added", joyEvent.jdevice.which);
+    Reinitialize();
+    break;
+
+  case SDL_JOYDEVICEREMOVED:
+    CLog::Log(LOGDEBUG, "Joystick %d removed", joyEvent.jdevice.which);
+    Reinitialize();
+    break;
 
   default:
     ignore = true;
@@ -509,6 +468,64 @@ bool CJoystick::Reinitialize()
   Initialize();
 
   return true;
+}
+
+void CJoystick::AddJoystick(int which)
+{
+  SDL_Joystick *joy = SDL_JoystickOpen(which);
+  std::string name(SDL_JoystickName(joy));
+
+#if defined(TARGET_DARWIN)
+  // On OS X, the 360 controllers are handled externally, since the SDL code is
+  // really buggy and doesn't handle disconnects.
+  //
+  if (name.find("360") != std::string::npos)
+  {
+    CLog::Log(LOGNOTICE, "Ignoring joystick: %s", name.c_str());
+    return;
+  }
+#endif
+  if (joy)
+  {
+    // Some (Microsoft) Keyboards are recognized as Joysticks by modern kernels
+    // Don't enumerate them
+    // https://bugs.launchpad.net/ubuntu/+source/linux/+bug/390959
+    // NOTICE: Enabled Joystick: Microsoft Wired Keyboard 600
+    // Details: Total Axis: 37 Total Hats: 0 Total Buttons: 57
+    // NOTICE: Enabled Joystick: Microsoft Microsoft® 2.4GHz Transceiver v6.0
+    // Details: Total Axis: 37 Total Hats: 0 Total Buttons: 57
+    // also checks if we have at least 1 button, fixes 
+    // NOTICE: Enabled Joystick: ST LIS3LV02DL Accelerometer
+    // Details: Total Axis: 3 Total Hats: 0 Total Buttons: 0
+    int num_axis = SDL_JoystickNumAxes(joy);
+    int num_buttons = SDL_JoystickNumButtons(joy);
+    if ((num_axis > 20 && num_buttons > 50) || num_buttons == 0)
+    {
+      CLog::Log(LOGNOTICE, "Ignoring Joystick %s Axis: %d Buttons: %d: invalid device properties", name.c_str(), num_axis, num_buttons);
+    }
+    else
+    {
+      m_JoystickNames.push_back(name);
+      CLog::Log(LOGNOTICE, "Enabled Joystick: %s", name.c_str());
+      CLog::Log(LOGNOTICE, "Details: Total Axis: %d Total Hats: %d Total Buttons: %d", num_axis, SDL_JoystickNumHats(joy), num_buttons);
+      m_Joysticks.push_back(joy);
+    }
+  }
+  else
+  {
+    m_JoystickNames.push_back(string(""));
+  }
+}
+
+int CJoystick::GetJoystickIndex(SDL_Joystick *joy)
+{
+  for (unsigned int i = 0; i < m_Joysticks.size(); i++)
+  {
+    if (m_Joysticks[i] == joy)
+      return i;
+  }
+
+  return -1;
 }
 
 #endif

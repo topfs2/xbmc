@@ -103,7 +103,7 @@
 #include "input/MouseStat.h"
 
 #ifdef HAS_SDL
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #endif
 
 #if defined(FILESYSTEM) && !defined(TARGET_POSIX)

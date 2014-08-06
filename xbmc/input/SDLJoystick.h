@@ -37,8 +37,8 @@
 
 #ifdef HAS_SDL_JOYSTICK
 
-#include <SDL/SDL_joystick.h>
-#include <SDL/SDL_events.h>
+#include <SDL2/SDL_joystick.h>
+#include <SDL2/SDL_events.h>
 
 #define MAX_AXES 64
 #define MAX_AXISAMOUNT 32768
@@ -79,6 +79,9 @@ private:
   bool IsHatActive() { return (m_ActiveFlags & JACTIVE_HAT) == JACTIVE_HAT; }
 
   bool ReleaseJoysticks();
+
+  void AddJoystick(int which);
+  int GetJoystickIndex(SDL_Joystick *joy);
 
   int m_Amount[MAX_AXES];
   int m_AxisId;

@@ -35,7 +35,7 @@
 #include "cores/IPlayer.h"
 
 #ifdef HAS_SDL
-#include <SDL/SDL_stdinc.h>
+#include <SDL2/SDL_stdinc.h>
 #else
 #define SDL_memset4(dst, val, len)		\
 do {						\

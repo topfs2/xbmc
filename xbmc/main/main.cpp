@@ -33,7 +33,7 @@
   #include "Util.h"
   // SDL redefines main as SDL_main 
   #ifdef HAS_SDL
-    #include <SDL/SDL.h>
+    #include <SDL2/SDL.h>
   #endif
 #endif
 #ifdef HAS_LIRC
