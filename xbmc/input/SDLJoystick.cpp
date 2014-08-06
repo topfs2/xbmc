@@ -235,58 +235,6 @@ void CJoystick::Update(SDL_Event& joyEvent)
 
   switch(joyEvent.type)
   {
-  case SDL_JOYBUTTONDOWN:
-    m_JoyId = joyId = joyEvent.jbutton.which;
-    m_ButtonId = buttonId = joyEvent.jbutton.button + 1;
-    m_pressTicksButton = SDL_GetTicks();
-    SetButtonActive();
-    CLog::Log(LOGDEBUG, "Joystick %d button %d Down", joyId, buttonId);
-    break;
-
-  case SDL_JOYAXISMOTION:
-    joyId = joyEvent.jaxis.which;
-    axisId = joyEvent.jaxis.axis + 1;
-    m_NumAxes = SDL_JoystickNumAxes(m_Joysticks[joyId]);
-    if (axisId<=0 || axisId>=MAX_AXES)
-    {
-      CLog::Log(LOGERROR, "Axis Id out of range. Maximum supported axis: %d", MAX_AXES);
-      ignore = true;
-      break;
-    }
-    axis = true;
-    m_JoyId = joyId;
-    if (joyEvent.jaxis.value==0)
-    {
-      ignore = true;
-      m_Amount[axisId] = 0;
-    }
-    else
-    {
-      m_Amount[axisId] = joyEvent.jaxis.value; //[-32768 to 32767]
-    }
-    m_AxisId = GetAxisWithMaxAmount();
-    CLog::Log(LOGDEBUG, "Joystick %d Axis %d Amount %d", joyId, axisId, m_Amount[axisId]);
-    break;
-
-  case SDL_JOYHATMOTION:
-    m_JoyId = joyId = joyEvent.jbutton.which;
-    m_HatId = joyEvent.jhat.hat + 1;
-    m_pressTicksHat = SDL_GetTicks();
-    m_HatState = joyEvent.jhat.value;
-    SetHatActive(m_HatState != SDL_HAT_CENTERED);
-    CLog::Log(LOGDEBUG, "Joystick %d Hat %d Down with position %d", joyId, buttonId, m_HatState);
-    break;
-
-  case SDL_JOYBALLMOTION:
-    ignore = true;
-    break;
-    
-  case SDL_JOYBUTTONUP:
-    m_pressTicksButton = 0;
-    SetButtonActive(false);
-    CLog::Log(LOGDEBUG, "Joystick %d button %d Up", joyEvent.jbutton.which, m_ButtonId);
-    break;
-
   case SDL_JOYDEVICEADDED:
     CLog::Log(LOGDEBUG, "Joystick %d added", joyEvent.jdevice.which);
     Reinitialize();

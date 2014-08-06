@@ -3040,7 +3040,11 @@ bool CApplication::ProcessGamepad(float frameTime)
         return true;
       }
 
-      CAction action(actionID, fullrange ? (g_Joystick.GetAmount() + 1.0f)/2.0f : fabs(g_Joystick.GetAmount()), 0.0f, actionName);
+      float position = fullrange ? (g_Joystick.GetAmount() + 1.0f)/2.0f : fabs(g_Joystick.GetAmount());
+      CAction action(actionID, position, 0.0f, actionName);
+
+      std::cout << "Axis " << bid << " " << position << std::endl;
+
       g_Joystick.Reset();
       g_Mouse.SetActive(false);
       return ExecuteInputAction(action);
