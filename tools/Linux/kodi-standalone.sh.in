@@ -21,7 +21,7 @@
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
 bindir="@bindir@"
-XBMC="${bindir}/xbmc --standalone $@"
+XBMC="${bindir}/kodi --standalone $@"
 
 @XBMC_STANDALONE_SH_PULSE@
 
