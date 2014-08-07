@@ -2441,8 +2441,8 @@ OUTPUT_FILES="Makefile \
     lib/addons/library.xbmc.gui/Makefile \
     lib/addons/library.xbmc.pvr/Makefile \
     xbmc/visualizations/EGLHelpers/Makefile \
-    tools/Linux/xbmc.sh \
-    tools/Linux/xbmc-standalone.sh \
+    tools/Linux/kodi.sh \
+    tools/Linux/kodi-standalone.sh \
     tools/TexturePacker/Makefile \
     tools/EventClients/Clients/OSXRemote/Makefile \
     xbmc/peripherals/bus/Makefile \
