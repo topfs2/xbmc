@@ -555,7 +555,7 @@ apk-clean:
 	make -C tools/android/packaging clean
 
 install-binaries: install-scripts
-	@echo "Copying XBMC binary to $(DESTDIR)$(libdir)/kodi/"
+	@echo "Copying Kodi binary to $(DESTDIR)$(libdir)/kodi/"
 	@install -d $(DESTDIR)$(libdir)/kodi
 ifeq (1,@USE_XRANDR@)
 	@install kodi-xrandr $(DESTDIR)$(libdir)/kodi/kodi-xrandr
