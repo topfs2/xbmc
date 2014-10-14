@@ -42,17 +42,15 @@ CGUIWindowManager::CGUIWindowManager(void)
   m_pCallback = NULL;
   m_bShowOverlay = true;
   m_iNested = 0;
-  m_initialized = false;
 }
 
 CGUIWindowManager::~CGUIWindowManager(void)
 {
 }
 
-void CGUIWindowManager::Initialize()
+void CGUIWindowManager::Reset()
 {
   m_tracker.SelectAlgorithm();
-  m_initialized = true;
 
   LoadNotOnDemandWindows();
 }
@@ -679,7 +677,7 @@ void CGUIWindowManager::SetCallback(IWindowManagerCallback& callback)
   m_pCallback = &callback;
 }
 
-void CGUIWindowManager::DeInitialize()
+void CGUIWindowManager::UnloadWindows()
 {
   CSingleLock lock(g_graphicsContext);
   for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
@@ -708,8 +706,6 @@ void CGUIWindowManager::DeInitialize()
   // clear our vectors of windows
   m_vecCustomWindows.clear();
   m_activeDialogs.clear();
-
-  m_initialized = false;
 }
 
 /// \brief Route to a window
