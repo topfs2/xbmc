@@ -50,6 +50,11 @@
 
 using namespace std;
 
+typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+typedef Bool (*glXMakeContextCurrentARBProc)(Display*, GLXDrawable, GLXDrawable, GLXContext);
+static glXCreateContextAttribsARBProc glXCreateContextAttribsARB = NULL;
+static glXMakeContextCurrentARBProc   glXMakeContextCurrentARB   = NULL;
+
 #define EGL_NO_CONFIG (EGLConfig)0
 
 CWinSystemX11::CWinSystemX11() : CWinSystemBase()
@@ -80,6 +85,9 @@ CWinSystemX11::~CWinSystemX11()
 
 bool CWinSystemX11::InitWindowSystem()
 {
+  glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc) glXGetProcAddressARB( (const GLubyte *) "glXCreateContextAttribsARB" );
+  glXMakeContextCurrentARB   = (glXMakeContextCurrentARBProc)   glXGetProcAddressARB( (const GLubyte *) "glXMakeContextCurrent"      );
+
   if ((m_dpy = XOpenDisplay(NULL)))
   {
     bool ret = CWinSystemBase::InitWindowSystem();
@@ -667,8 +675,80 @@ bool CWinSystemX11::RefreshGlxContext(bool force)
       m_newGlContext = true;
     }
 
-    if ((m_glContext = glXCreateContext(m_dpy, vInfo, NULL, True)))
+    static int visual_attribs[] =
+      {
+        GLX_X_RENDERABLE    , True,
+        GLX_DRAWABLE_TYPE   , GLX_WINDOW_BIT,
+        GLX_RENDER_TYPE     , GLX_RGBA_BIT,
+        GLX_X_VISUAL_TYPE   , GLX_TRUE_COLOR,
+        GLX_RED_SIZE        , 8,
+        GLX_GREEN_SIZE      , 8,
+        GLX_BLUE_SIZE       , 8,
+        GLX_ALPHA_SIZE      , 8,
+        GLX_DEPTH_SIZE      , 24,
+        GLX_STENCIL_SIZE    , 8,
+        GLX_DOUBLEBUFFER    , True,
+        //GLX_SAMPLE_BUFFERS  , 1,
+        //GLX_SAMPLES         , 4,
+        None
+      };
+
+    printf( "Getting matching framebuffer configs\n" );
+    int fbcount;
+    GLXFBConfig* fbc = glXChooseFBConfig(m_dpy, DefaultScreen(m_dpy), visual_attribs, &fbcount);
+    if (!fbc)
     {
+      printf( "Failed to retrieve a framebuffer config\n" );
+      exit(1);
+    }
+    printf( "Found %d matching FB configs.\n", fbcount );
+   
+    // Pick the FB config/visual with the most samples per pixel
+    printf( "Getting XVisualInfos\n" );
+    int best_fbc = -1, worst_fbc = -1, best_num_samp = -1, worst_num_samp = 999;
+   
+    int i;
+    for (i=0; i<fbcount; ++i)
+    {
+      XVisualInfo *vi = glXGetVisualFromFBConfig( m_dpy, fbc[i] );
+      if ( vi )
+      {
+        int samp_buf, samples;
+        glXGetFBConfigAttrib( m_dpy, fbc[i], GLX_SAMPLE_BUFFERS, &samp_buf );
+        glXGetFBConfigAttrib( m_dpy, fbc[i], GLX_SAMPLES       , &samples  );
+   
+        printf( "  Matching fbconfig %d, visual ID 0x%2x: SAMPLE_BUFFERS = %d,"
+                " SAMPLES = %d\n", 
+                i, vi -> visualid, samp_buf, samples );
+   
+        if ( best_fbc < 0 || samp_buf && samples > best_num_samp )
+          best_fbc = i, best_num_samp = samples;
+        if ( worst_fbc < 0 || !samp_buf || samples < worst_num_samp )
+          worst_fbc = i, worst_num_samp = samples;
+      }
+      XFree( vi );
+    }
+   
+    GLXFBConfig bestFbc = fbc[ best_fbc ];
+
+
+
+    int context_attribs[] =
+      {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+        //GLX_CONTEXT_FLAGS_ARB        , GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
+        None
+      };
+ 
+    printf( "Creating context\n" );
+    m_glContext = glXCreateContextAttribsARB(m_dpy, bestFbc, 0,
+                                      True, context_attribs );
+
+//    if ((m_glContext = glXCreateContext(m_dpy, vInfo, NULL, True)))
+    if (m_glContext)
+    {
+      printf("Should have 3.0 context\n");
       // make this context current
       glXMakeCurrent(m_dpy, m_glWindow, m_glContext);
       retVal = true;
