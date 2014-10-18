@@ -32,6 +32,7 @@
 #define __STDC_LIMIT_MACROS
 
 #include "addons/include/xbmc_vis_dll.h"
+#include "RenderProgram.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -70,9 +71,25 @@ void fft(cplx buf[], int n)
 #define AUDIO_BUFFER 512
 #define NUM_BANDS (AUDIO_BUFFER / 2)
 
+static std::string vertexShader =
+"void main()"
+"{"
+"  gl_Position = ftransform();"
+"  gl_FrontColor = gl_Color;"
+"}";
+
+static std::string fragmentShader =
+"void main()"
+"{"
+"  gl_FragColor = gl_Color;"
+"}";
+
 static GLfloat heights[NUM_BANDS];
 static GLfloat scale;
 static float hSpeed;
+static CRenderProgramPtr shader;
+
+static bool initialized = false;
 
 static void draw_rectangle(GLfloat x1, GLfloat y1, GLfloat z1, GLfloat x2, GLfloat y2, GLfloat z2)
 {
@@ -102,23 +119,28 @@ static void draw_bars(void)
 {
   glClear(GL_DEPTH_BUFFER_BIT);
   glPushMatrix();
+
+  shader->Bind();
   
   glPolygonMode(GL_FRONT_AND_BACK, g_mode);
   glBegin(GL_TRIANGLES);
 
   GLfloat padding = 0.1;
-  GLfloat xscale = (2.0 - padding * 2.0) / (NUM_BANDS * 1.0);
+  GLfloat xscale = (2.0 - padding * 5.0) / (NUM_BANDS * 1.0);
   GLfloat x = -1.0f + padding;
+  GLfloat y = 0.0f;
 
   glColor3f(0.2, 1.0, 0.2);
   for (unsigned int i = 0; i < NUM_BANDS; i++) {
-    draw_rectangle(x, -0.9f, 0.0f, x + xscale * 0.5, heights[i] - 0.85f, 0.0f);
+    draw_rectangle(x, y, 0.0f, x + xscale * 0.5, y + heights[i] + 0.05f, 0.0f);
     x += xscale;
   }
 
   glEnd();
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   glPopMatrix();
+
+  CRenderProgram::revertToFixedPipeline();
 }
 
 //-- Create -------------------------------------------------------------------
@@ -126,14 +148,28 @@ static void draw_bars(void)
 //-----------------------------------------------------------------------------
 ADDON_STATUS ADDON_Create(void* hdl, void* props)
 {
+  std::cout << "ADDON_Create" << std::endl;
 
   if (!props)
     return ADDON_STATUS_UNKNOWN;
 
-  scale = 1.0 / log(256.0);
-  hSpeed = 0.0;
+  if (!initialized) {
+    scale = 1.0 / log(256.0);
+    hSpeed = 0.0;
 
-  return ADDON_STATUS_NEED_SETTINGS;
+	  if (GLEW_OK != glewInit()) {
+		  std::cout << "Failed to initialize glew";
+	  }
+    std::cout << "Using GLEW Version: " << glewGetString(GLEW_VERSION) << std::endl;
+
+    if (!shader) {
+      shader = CRenderProgramPtr(new CRenderProgram(&vertexShader, &fragmentShader));
+    }
+
+    initialized = true;
+  }
+
+  return ADDON_STATUS_OK;
 }
 
 //-- Render -------------------------------------------------------------------
@@ -175,7 +211,8 @@ extern "C" void AudioData(const float* pAudioData, int iAudioDataLength, float *
   cplx buf[iAudioDataLength];
 
   for (unsigned int i = 0; i < iAudioDataLength; i++) {
-    buf[i] = pAudioData[i];
+    double multiplier = 0.5 * (1.0 - cos(2 * PI * i / (iAudioDataLength - 1)));
+    buf[i] = pAudioData[i] * multiplier;
   }
 
   fft(buf, iAudioDataLength);
@@ -273,7 +310,7 @@ extern "C" void ADDON_Destroy()
 //-----------------------------------------------------------------------------
 extern "C" bool ADDON_HasSettings()
 {
-  return true;
+  return false;
 }
 
 //-- GetStatus ---------------------------------------------------------------
@@ -312,101 +349,7 @@ extern "C" ADDON_STATUS ADDON_SetSetting(const char *strSetting, const void* val
   if (!strSetting || !value)
     return ADDON_STATUS_UNKNOWN;
 
-  if (strcmp(strSetting, "bar_height")==0)
-  {
-    switch (*(int*) value)
-    {
-    case 1://standard
-      scale = 1.f / log(256.f);
-      break;
-
-    case 2://big
-      scale = 2.f / log(256.f);
-      break;
-
-    case 3://real big
-      scale = 3.f / log(256.f);
-      break;
-
-    case 4://unused
-      scale = 0.33f / log(256.f);
-      break;
-
-    case 0://small
-    default:
-      scale = 0.5f / log(256.f);
-      break;
-    }
-    return ADDON_STATUS_OK;
-  }
-  else if (strcmp(strSetting, "speed")==0)
-  {
-    switch (*(int*) value)
-    {
-    case 1:
-      hSpeed = 0.025f;
-      break;
-
-    case 2:
-      hSpeed = 0.0125f;
-      break;
-
-    case 3:
-      hSpeed = 0.1f;
-      break;
-
-    case 4:
-      hSpeed = 0.2f;
-      break;
-
-    case 0:
-    default:
-      hSpeed = 0.05f;
-      break;
-    }
-    return ADDON_STATUS_OK;
-  }
-  else if (strcmp(strSetting, "mode")==0)
-  {
-#if defined(HAS_SDL_OPENGL)
-    switch (*(int*) value)
-    {
-      case 1:
-        g_mode = GL_LINE;
-        break;
-
-      case 2:
-        g_mode = GL_POINT;
-        break;
-
-      case 0:
-      default:
-        g_mode = GL_FILL;
-        break;
-    }
-#else
-    switch (*(int*) value)
-    {
-      case 1:
-        g_mode = GL_LINE_LOOP;
-        break;
-
-      case 2:
-        g_mode = GL_LINES; //no points on gles!
-        break;
-
-      case 0:
-      default:
-        g_mode = GL_TRIANGLES;
-        break;
-    }
-
-#endif
-
-    return ADDON_STATUS_OK;
-  }
-
-  return ADDON_STATUS_UNKNOWN;
+  return ADDON_STATUS_OK;
 }
 
 //-- Announce -----------------------------------------------------------------
