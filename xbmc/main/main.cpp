@@ -41,22 +41,22 @@
 #endif
 #include "XbmcContext.h"
 
+#include <log4cplus/logger.h>
+#include <log4cplus/configurator.h>
+
 int main(int argc, char* argv[])
 {
   // set up some xbmc specific relationships
   XBMC::Context context;
 
   bool renderGUI = true;
-  //this can't be set from CAdvancedSettings::Initialize() because it will overwrite
-  //the loglevel set with the --debug flag
-#ifdef _DEBUG
-  g_advancedSettings.m_logLevel     = LOG_LEVEL_DEBUG;
-  g_advancedSettings.m_logLevelHint = LOG_LEVEL_DEBUG;
-#else
-  g_advancedSettings.m_logLevel     = LOG_LEVEL_NORMAL;
-  g_advancedSettings.m_logLevelHint = LOG_LEVEL_NORMAL;
-#endif
-  CLog::SetLogLevel(g_advancedSettings.m_logLevel);
+
+/*
+  log4cplus::BasicConfigurator config;
+  config.configure();
+*/
+
+  log4cplus::PropertyConfigurator::doConfigure(LOG4CPLUS_TEXT("/home/topfs/log4cplus.conf"));
 
 #ifdef TARGET_POSIX
 #if defined(DEBUG)
@@ -73,5 +73,9 @@ int main(int argc, char* argv[])
   CAppParamParser appParamParser;
   appParamParser.Parse((const char **)argv, argc);
 #endif
-  return XBMC_Run(renderGUI);
+  int res = XBMC_Run(renderGUI);
+
+  log4cplus::Logger::shutdown();
+
+  return res;
 }

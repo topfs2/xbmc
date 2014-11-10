@@ -44,13 +44,17 @@
 #include "filesystem/File.h"
 #include "filesystem/CurlFile.h"
 #include "filesystem/Directory.h"
-#include "utils/log.h"
 #include "threads/Thread.h"
 #include "threads/SystemClock.h"
 #include "utils/TimeUtils.h"
 #include "utils/StringUtils.h"
 #include "URL.h"
 #include "cores/FFmpeg.h"
+
+#include <log4cplus/logger.h>
+#include <log4cplus/loggingmacros.h>
+
+using namespace log4cplus;
 
 extern "C" {
 #include "libavutil/opt.h"
@@ -75,6 +79,8 @@ static const struct StereoModeConversionMap WmvToInternalStereoModeMap[] =
 };
 
 #define FF_MAX_EXTRADATA_SIZE ((1 << 28) - FF_INPUT_BUFFER_PADDING_SIZE)
+
+static Logger logger = Logger::getInstance("cores.dvdplayer.demuxers.ffmpeg");
 
 void CDemuxStreamAudioFFmpeg::GetStreamInfo(std::string& strInfo)
 {
@@ -259,7 +265,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
     }
     if (result < 0 && avformat_open_input(&m_pFormatContext, strFile.c_str(), iformat, &options) < 0 )
     {
-      CLog::Log(LOGDEBUG, "Error, could not open file %s", CURL::GetRedacted(strFile).c_str());
+      LOG4CPLUS_DEBUG(logger, "Error, could not open file " << CURL::GetRedacted(strFile));
       Dispose();
       av_dict_free(&options);
       return false;
@@ -304,7 +310,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
         pd.buf_size = avio_read(m_ioContext, pd.buf, m_ioContext->max_packet_size ? m_ioContext->max_packet_size : m_ioContext->buffer_size);
         if (pd.buf_size <= 0)
         {
-          CLog::Log(LOGERROR, "%s - error reading from input stream, %s", __FUNCTION__, CURL::GetRedacted(strFile).c_str());
+          LOG4CPLUS_ERROR(logger, "error reading from input stream, " << CURL::GetRedacted(strFile));
           return false;
         }
         memset(pd.buf+pd.buf_size, 0, AVPROBE_PADDING_SIZE);
@@ -343,7 +349,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
             {
               // not dts either, return false in case we were explicitely
               // requested to only check for S/PDIF padded compressed audio
-              CLog::Log(LOGDEBUG, "%s - not spdif or dts file, fallbacking", __FUNCTION__);
+              LOG4CPLUS_DEBUG(logger, "not spdif or dts file, fallbacking");
               return false;
             }
           }
@@ -367,15 +373,15 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
 
       if (!iformat)
       {
-        CLog::Log(LOGERROR, "%s - error probing input format, %s", __FUNCTION__, CURL::GetRedacted(strFile).c_str());
+        LOG4CPLUS_ERROR(logger, "error probing input format, " << CURL::GetRedacted(strFile));
         return false;
       }
       else
       {
         if (iformat->name)
-          CLog::Log(LOGDEBUG, "%s - probing detected format [%s]", __FUNCTION__, iformat->name);
+          LOG4CPLUS_DEBUG(logger, "probing detected format [" << iformat->name << "]");
         else
-          CLog::Log(LOGDEBUG, "%s - probing detected unnamed format", __FUNCTION__);
+          LOG4CPLUS_DEBUG(logger, "probing detected unnamed format");
       }
     }
 
@@ -386,13 +392,13 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
     if(strcmp(iformat->name, "mp3") == 0
       || strcmp(iformat->name, "mp2") == 0 )
     {
-      CLog::Log(LOGDEBUG, "%s - setting usetoc to 0 for accurate VBR MP3 seek", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "setting usetoc to 0 for accurate VBR MP3 seek");
       av_dict_set(&options, "usetoc", "0", 0);
     }
 
     if (avformat_open_input(&m_pFormatContext, strFile.c_str(), iformat, &options) < 0)
     {
-      CLog::Log(LOGERROR, "%s - Error, could not open file %s", __FUNCTION__, CURL::GetRedacted(strFile).c_str());
+      LOG4CPLUS_ERROR(logger, "Error, could not open file " << CURL::GetRedacted(strFile));
       Dispose();
       av_dict_free(&options);
       return false;
@@ -427,11 +433,11 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
     if(m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD))
       av_opt_set_int(m_pFormatContext, "analyzeduration", 500000, 0);
 
-    CLog::Log(LOGDEBUG, "%s - avformat_find_stream_info starting", __FUNCTION__);
+    LOG4CPLUS_DEBUG(logger, "avformat_find_stream_info starting");
     int iErr = avformat_find_stream_info(m_pFormatContext, NULL);
     if (iErr < 0)
     {
-      CLog::Log(LOGWARNING,"could not find codec parameters for %s", CURL::GetRedacted(strFile).c_str());
+      LOG4CPLUS_WARN(logger, "could not find codec parameters for " << CURL::GetRedacted(strFile));
       if (m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD)
       ||  m_pInput->IsStreamType(DVDSTREAM_TYPE_BLURAY)
       || (m_pFormatContext->nb_streams == 1 && m_pFormatContext->streams[0]->codec->codec_id == AV_CODEC_ID_AC3))
@@ -444,7 +450,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo, bool filein
         return false;
       }
     }
-    CLog::Log(LOGDEBUG, "%s - av_find_stream_info finished", __FUNCTION__);
+    LOG4CPLUS_DEBUG(logger, "av_find_stream_info finished");
 
     if (m_checkvideo)
     {
@@ -489,7 +495,7 @@ void CDVDDemuxFFmpeg::Dispose()
   {
     if (m_ioContext && m_pFormatContext->pb && m_pFormatContext->pb != m_ioContext)
     {
-      CLog::Log(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
+      LOG4CPLUS_WARN(logger, "demuxer changed our byte context behind our back, possible memleak");
       m_ioContext = m_pFormatContext->pb;
     }
     avformat_close_input(&m_pFormatContext);
@@ -690,12 +696,12 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
       // XXX, in some cases ffmpeg returns a negative packet size
       if(m_pFormatContext->pb && !m_pFormatContext->pb->eof_reached)
       {
-        CLog::Log(LOGERROR, "CDVDDemuxFFmpeg::Read() no valid packet");
+        LOG4CPLUS_ERROR(logger, "no valid packet");
         bReturnEmpty = true;
         Flush();
       }
       else
-        CLog::Log(LOGERROR, "CDVDDemuxFFmpeg::Read() returned invalid packet and eof reached");
+        LOG4CPLUS_ERROR(logger, "returned invalid packet and eof reached");
 
       m_pkt.result = -1;
       av_free_packet(&m_pkt.pkt);
@@ -844,7 +850,7 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
     }
     if (!stream)
     {
-      CLog::Log(LOGERROR, "CDVDDemuxFFmpeg::AddStream - internal error, stream is null");
+      LOG4CPLUS_ERROR(logger, "internal error, stream is null");
       CDVDDemuxUtils::FreeDemuxPacket(pPacket);
       return NULL;
     }
@@ -882,7 +888,7 @@ bool CDVDDemuxFFmpeg::SeekTime(int time, bool backwords, double *startpts)
   if(!m_pInput->Seek(0, SEEK_POSSIBLE)
   && !m_pInput->IsStreamType(DVDSTREAM_TYPE_FFMPEG))
   {
-    CLog::Log(LOGDEBUG, "%s - input stream reports it is not seekable", __FUNCTION__);
+    LOG4CPLUS_DEBUG(logger, "input stream reports it is not seekable");
     return false;
   }
 
@@ -900,9 +906,9 @@ bool CDVDDemuxFFmpeg::SeekTime(int time, bool backwords, double *startpts)
   }
 
   if(m_currentPts == DVD_NOPTS_VALUE)
-    CLog::Log(LOGDEBUG, "%s - unknown position after seek", __FUNCTION__);
+    LOG4CPLUS_DEBUG(logger, "unknown position after seek");
   else
-    CLog::Log(LOGDEBUG, "%s - seek ended up on time %d", __FUNCTION__, (int)(m_currentPts / DVD_TIME_BASE * 1000));
+    LOG4CPLUS_DEBUG(logger, "seek ended up on time " << (int)(m_currentPts / DVD_TIME_BASE * 1000));
 
   // in this case the start time is requested time
   if(startpts)
@@ -1132,7 +1138,7 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int iId)
         &&  pStream->codec_info_nb_frames <= 2
         &&  m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD))
         {
-          CLog::Log(LOGDEBUG, "%s - fps may be unreliable since ffmpeg decoded only %d frame(s)", __FUNCTION__, pStream->codec_info_nb_frames);
+          LOG4CPLUS_DEBUG(logger, "fps may be unreliable since ffmpeg decoded only " << pStream->codec_info_nb_frames << " frame(s)");
           st->iFpsRate  = 0;
           st->iFpsScale = 0;
         }
@@ -1166,7 +1172,7 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int iId)
             {
               pStream->codec->codec_id = AV_CODEC_ID_MPEG2VIDEO;
               pStream->codec->codec_tag = MKTAG('M','P','2','V');
-              CLog::Log(LOGERROR, "%s - AV_CODEC_ID_PROBE detected, forcing AV_CODEC_ID_MPEG2VIDEO", __FUNCTION__);
+              LOG4CPLUS_ERROR(logger, "AV_CODEC_ID_PROBE detected, forcing AV_CODEC_ID_MPEG2VIDEO");
             }
           }
         }
@@ -1209,7 +1215,7 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int iId)
           AVDictionaryEntry *nameTag = av_dict_get(pStream->metadata, "filename", NULL, 0);
           if (!nameTag)
           {
-            CLog::Log(LOGERROR, "%s: TTF attachment has no name", __FUNCTION__);
+            LOG4CPLUS_ERROR(logger, "TTF attachment has no name");
           }
           else
           {
@@ -1221,7 +1227,7 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int iId)
               {
                 file.Close();
                 XFILE::CFile::Delete(fileName);
-                CLog::Log(LOGDEBUG, "%s: Error saving font file \"%s\"", __FUNCTION__, fileName.c_str());
+                LOG4CPLUS_ERROR(logger, "Error saving font file \"" << fileName << "\"");
               }
             }
           }
@@ -1328,8 +1334,8 @@ void CDVDDemuxFFmpeg::AddStream(int iId, CDemuxStream* stream)
     delete res.first->second;
     res.first->second = stream;
   }
-  if(g_advancedSettings.m_logLevel > LOG_LEVEL_NORMAL)
-    CLog::Log(LOGDEBUG, "CDVDDemuxFFmpeg::AddStream(%d, ...) -> %d", iId, stream->iId);
+
+  LOG4CPLUS_DEBUG(logger, "CDVDDemuxFFmpeg::AddStream(" << iId << ", ...) -> " << stream->iId);
 }
 
 
@@ -1400,7 +1406,7 @@ bool CDVDDemuxFFmpeg::SeekChapter(int chapter, double* startpts)
   CDVDInputStream::IChapter* ich = dynamic_cast<CDVDInputStream::IChapter*>(m_pInput);
   if(ich)
   {
-    CLog::Log(LOGDEBUG, "%s - chapter seeking using input stream", __FUNCTION__);
+    LOG4CPLUS_DEBUG(logger, "chapter seeking using input stream");
     if(!ich->SeekChapter(chapter))
       return false;
 
@@ -1558,7 +1564,7 @@ void CDVDDemuxFFmpeg::ParsePacket(AVPacket *pkt)
       st->codec->extradata = (uint8_t*)av_malloc(st->codec->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
       if (st->codec->extradata)
       {
-        CLog::Log(LOGDEBUG, "CDVDDemuxFFmpeg::Read() fetching extradata, extradata_size(%d)", st->codec->extradata_size);
+        LOG4CPLUS_DEBUG(logger, "CDVDDemuxFFmpeg::Read() fetching extradata, extradata_size(" << st->codec->extradata_size << ")");
         memcpy(st->codec->extradata, pkt->data, st->codec->extradata_size);
         memset(st->codec->extradata + i, 0, FF_INPUT_BUFFER_PADDING_SIZE);
       }

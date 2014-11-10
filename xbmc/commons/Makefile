@@ -1,6 +1,5 @@
 SRCS= \
-	Exception.cpp \
-	ilog.cpp
+	Exception.cpp
 
 LIB=commons.a
 

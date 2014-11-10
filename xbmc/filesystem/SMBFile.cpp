@@ -37,16 +37,35 @@
 #include "commons/Exception.h"
 
 using namespace XFILE;
+using namespace log4cplus;
 
-void xb_smbc_log(const char* msg)
-{
-  CLog::Log(LOGINFO, "%s%s", "smb: ", msg);
-}
+static Logger logger = Logger::getInstance("filesystem.samba");
 
 void xb_smbc_auth(const char *srv, const char *shr, char *wg, int wglen,
                   char *un, int unlen, char *pw, int pwlen)
 {
   return ;
+}
+
+int xb_smbc_loglevel(LogLevel lvl)
+{
+  switch (lvl)
+  {
+    case FATAL_LOG_LEVEL:
+      return 1;
+    case ERROR_LOG_LEVEL:
+      return 2;
+    case WARN_LOG_LEVEL:
+      return 4;
+    case INFO_LOG_LEVEL:
+      return 6;
+    case DEBUG_LOG_LEVEL:
+      return 8;
+    case TRACE_LOG_LEVEL:
+      return 10;
+    default:
+      return 0;
+  }
 }
 
 smbc_get_cached_srv_fn orig_cache;
@@ -82,7 +101,7 @@ void CSMB::Deinit()
     XBMCCOMMONS_HANDLE_UNCHECKED
     catch(...)
     {
-      CLog::Log(LOGERROR,"exception on CSMB::Deinit. errno: %d", errno);
+      LOG4CPLUS_ERROR(logger, "exception on CSMB::Deinit. errno: " << errno);
     }
     m_context = NULL;
   }
@@ -144,10 +163,11 @@ void CSMB::Init()
     // multiple smbc_init calls are ignored by libsmbclient.
     smbc_init(xb_smbc_auth, 0);
 
+    int loglevel = logger.getChainedLogLevel() == TRACE_LOG_LEVEL ? 10 : 0;
     // setup our context
     m_context = smbc_new_context();
 #ifdef DEPRECATED_SMBC_INTERFACE
-    smbc_setDebug(m_context, g_advancedSettings.CanLogComponent(LOGSAMBA) ? 10 : 0);
+    smbc_setDebug(m_context, loglevel);
     smbc_setFunctionAuthData(m_context, xb_smbc_auth);
     orig_cache = smbc_getFunctionGetCachedServer(m_context);
     smbc_setFunctionGetCachedServer(m_context, xb_smbc_cache);
@@ -156,7 +176,7 @@ void CSMB::Init()
     smbc_setTimeout(m_context, g_advancedSettings.m_sambaclienttimeout * 1000);
     smbc_setUser(m_context, strdup("guest"));
 #else
-    m_context->debug = (g_advancedSettings.CanLogComponent(LOGSAMBA) ? 10 : 0);
+    m_context->debug = loglevel;
     m_context->callbacks.auth_fn = xb_smbc_auth;
     orig_cache = m_context->callbacks.get_cached_srv_fn;
     m_context->callbacks.get_cached_srv_fn = xb_smbc_cache;
@@ -263,7 +283,7 @@ void CSMB::CheckIfIdle()
       }
 	  else
 	  {
-        CLog::Log(LOGNOTICE, "Samba is idle. Closing the remaining connections");
+        LOG4CPLUS_INFO(logger, "Samba is idle. Closing the remaining connections");
         smb.Deinit();
       }
     }
@@ -332,7 +352,7 @@ bool CSMBFile::Open(const CURL& url)
   // if a file matches the if below return false, it can't exist on a samba share.
   if (!IsValidFile(url.GetFileName()))
   {
-      CLog::Log(LOGNOTICE,"SMBFile->Open: Bad URL : '%s'",url.GetFileName().c_str());
+      LOG4CPLUS_INFO(logger, "Bad URL : '" << url.GetFileName() << "'");
       return false;
   }
   m_url = url;
@@ -344,11 +364,11 @@ bool CSMBFile::Open(const CURL& url)
   std::string strFileName;
   m_fd = OpenFile(url, strFileName);
 
-  CLog::Log(LOGDEBUG,"CSMBFile::Open - opened %s, fd=%d",url.GetFileName().c_str(), m_fd);
+  LOG4CPLUS_DEBUG(logger, "opened " << url.GetFileName() << ", fd=" << m_fd);
   if (m_fd == -1)
   {
     // write error to logfile
-    CLog::Log(LOGINFO, "SMBFile->Open: Unable to open file : '%s'\nunix_err:'%x' error : '%s'", CURL::GetRedacted(strFileName).c_str(), errno, strerror(errno));
+    LOG4CPLUS_INFO(logger, "Unable to open file : '" << CURL::GetRedacted(strFileName) << "'\nunix_err:'" << errno << "' error : '" << strerror(errno) << "'");
     return false;
   }
 
@@ -503,7 +523,7 @@ int CSMBFile::Truncate(int64_t size)
   int iResult = smbc_ftruncate(m_fd, size);
 #endif
 */
-  CLog::Log(LOGWARNING, "%s - Warning(smbc_ftruncate called and not implemented)", __FUNCTION__);
+  LOG4CPLUS_WARN(logger, "smbc_ftruncate called and not implemented)");
   return 0;
 }
 
@@ -543,12 +563,12 @@ ssize_t CSMBFile::Read(void *lpBuf, size_t uiBufSize)
     {
       if (errno == EINVAL)
       {
-        CLog::LogF(LOGWARNING, "Error %d: \"%s\" - Retrying", errno, strerror(errno));
+        LOG4CPLUS_WARN(logger, "Error " << errno << ": \"" << strerror(errno) << "\" - Retrying");
         r = smbc_read(m_fd, buf + totalRead, readSize);
       }
       if (r < 0)
       {
-        CLog::LogF(LOGERROR, "Error %d: \"%s\"", errno, strerror(errno));
+        LOG4CPLUS_ERROR(logger, "Error " << errno << ": \"" << strerror(errno) << "\"");
         if (totalRead == 0)
           return -1;
 
@@ -575,7 +595,7 @@ int64_t CSMBFile::Seek(int64_t iFilePosition, int iWhence)
 
   if ( pos < 0 )
   {
-    CLog::Log(LOGERROR, "%s - Error( %" PRId64", %d, %s )", __FUNCTION__, pos, errno, strerror(errno));
+    LOG4CPLUS_ERROR(logger, "Error(" << pos << ", " << errno << ", " << strerror(errno) << ")");
     return -1;
   }
 
@@ -586,7 +606,7 @@ void CSMBFile::Close()
 {
   if (m_fd != -1)
   {
-    CLog::Log(LOGDEBUG,"CSMBFile::Close closing fd %d", m_fd);
+    LOG4CPLUS_DEBUG(logger, "closing fd " << m_fd);
     CSingleLock lock(smb);
     smbc_close(m_fd);
   }
@@ -614,7 +634,7 @@ bool CSMBFile::Delete(const CURL& url)
   int result = smbc_unlink(strFile.c_str());
 
   if(result != 0)
-    CLog::Log(LOGERROR, "%s - Error( %s )", __FUNCTION__, strerror(errno));
+    LOG4CPLUS_ERROR(logger, "Error(" << strerror(errno) << ")");
 
   return (result == 0);
 }
@@ -629,7 +649,7 @@ bool CSMBFile::Rename(const CURL& url, const CURL& urlnew)
   int result = smbc_rename(strFile.c_str(), strFileNew.c_str());
 
   if(result != 0)
-    CLog::Log(LOGERROR, "%s - Error( %s )", __FUNCTION__, strerror(errno));
+    LOG4CPLUS_ERROR(logger, "Error(" << strerror(errno) << ")");
 
   return (result == 0);
 }
@@ -649,7 +669,7 @@ bool CSMBFile::OpenForWrite(const CURL& url, bool bOverWrite)
 
   if (bOverWrite)
   {
-    CLog::Log(LOGWARNING, "SMBFile::OpenForWrite() called with overwriting enabled! - %s", strFileName.c_str());
+    LOG4CPLUS_WARN(logger, "called with overwriting enabled! - " << strFileName);
     m_fd = smbc_creat(strFileName.c_str(), 0);
   }
   else
@@ -660,7 +680,7 @@ bool CSMBFile::OpenForWrite(const CURL& url, bool bOverWrite)
   if (m_fd == -1)
   {
     // write error to logfile
-    CLog::Log(LOGERROR, "SMBFile->Open: Unable to open file : '%s'\nunix_err:'%x' error : '%s'", strFileName.c_str(), errno, strerror(errno));
+    LOG4CPLUS_ERROR(logger, "Unable to open file : '" << strFileName << "'\nunix_err:'" << errno << "' error : '" << strerror(errno) << "'");
     return false;
   }
 

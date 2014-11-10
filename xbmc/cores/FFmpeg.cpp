@@ -26,6 +26,10 @@
 #include "settings/AdvancedSettings.h"
 #include <map>
 
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("ffmpeg");
+
 /* callback for the ffmpeg lock manager */
 int ffmpeg_lockmgr_cb(void **mutex, enum AVLockOp operation)
 {
@@ -87,21 +91,6 @@ void ff_avutil_log(void* ptr, int level, const char* format, va_list va)
 
   AVClass* avc= ptr ? *(AVClass**)ptr : NULL;
 
-  if(level >= AV_LOG_DEBUG &&
-     !g_advancedSettings.CanLogComponent(LOGFFMPEG))
-    return;
-  else if(g_advancedSettings.m_logLevel <= LOG_LEVEL_NORMAL)
-    return;
-
-  int type;
-  switch(level)
-  {
-    case AV_LOG_INFO   : type = LOGINFO;    break;
-    case AV_LOG_ERROR  : type = LOGERROR;   break;
-    case AV_LOG_DEBUG  :
-    default            : type = LOGDEBUG;   break;
-  }
-
   std::string message = StringUtils::FormatV(format, va);
   std::string prefix = StringUtils::Format("ffmpeg[%lX]: ", threadId);
   if(avc)
@@ -117,7 +106,21 @@ void ff_avutil_log(void* ptr, int level, const char* format, va_list va)
   while( (pos = buffer.find_first_of('\n', start)) >= 0 )
   {
     if(pos>start)
-      CLog::Log(type, "%s%s", prefix.c_str(), buffer.substr(start, pos-start).c_str());
+    {
+      switch(level)
+      {
+        case AV_LOG_INFO:
+          LOG4CPLUS_INFO(logger, prefix << buffer.substr(start, pos-start));
+          break;
+        case AV_LOG_ERROR:
+          LOG4CPLUS_ERROR(logger, prefix << buffer.substr(start, pos-start));
+          break;
+        case AV_LOG_DEBUG:
+        default:
+          LOG4CPLUS_DEBUG(logger, prefix << buffer.substr(start, pos-start));
+          break;
+      }
+    }
     start = pos+1;
   }
   buffer.erase(0, start);

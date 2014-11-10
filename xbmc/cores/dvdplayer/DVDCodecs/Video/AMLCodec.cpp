@@ -217,7 +217,6 @@ public:
     // we do not care about the rest, flush and go.
     // FYI there are 4.0 to 4.1 differences here.
     CBitstreamConverter::flush_bits(&bs);
-    //CLog::MemDump((char*)p_out, 0xFF);
 #else
     // direct struct usage, we do not know which flavor
     // so just use what we get from headers and pray.

@@ -95,45 +95,6 @@ TEST_F(Testlog, Log)
   EXPECT_TRUE(XFILE::CFile::Delete(logfile));
 }
 
-TEST_F(Testlog, MemDump)
-{
-  CStdString logfile, logstring;
-  char buf[100];
-  unsigned int bytesread;
-  XFILE::CFile file;
-  CRegExp regex;
-  char refdata[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-
-  std::string appName = CCompileInfo::GetAppName();
-  StringUtils::ToLower(appName);
-  logfile = CSpecialProtocol::TranslatePath("special://temp/") + appName + ".log";
-  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/").c_str()));
-  EXPECT_TRUE(XFILE::CFile::Exists(logfile));
-
-  CLog::MemDump(refdata, sizeof(refdata));
-  CLog::Close();
-
-  EXPECT_TRUE(file.Open(logfile));
-  while ((bytesread = file.Read(buf, sizeof(buf) - 1)) > 0)
-  {
-    buf[bytesread] = '\0';
-    logstring.append(buf);
-  }
-  file.Close();
-  EXPECT_FALSE(logstring.empty());
-
-  EXPECT_STREQ("\xEF\xBB\xBF", logstring.substr(0, 3).c_str());
-
-  EXPECT_TRUE(regex.RegComp(".*DEBUG: MEM_DUMP: Dumping from.*"));
-  EXPECT_GE(regex.RegFind(logstring), 0);
-  EXPECT_TRUE(regex.RegComp(".*DEBUG: MEM_DUMP: 0000  30 31 32 33.*"));
-  EXPECT_GE(regex.RegFind(logstring), 0);
-  EXPECT_TRUE(regex.RegComp(".*73 74 75 76  ghijklmnopqrstuv.*"));
-  EXPECT_GE(regex.RegFind(logstring), 0);
-
-  EXPECT_TRUE(XFILE::CFile::Delete(logfile));
-}
-
 TEST_F(Testlog, SetLogLevel)
 {
   CStdString logfile;

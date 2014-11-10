@@ -35,6 +35,9 @@
 using namespace ANNOUNCEMENT;
 using namespace JSONRPC;
 using namespace std;
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("interfaces.jsonrpc");
 
 bool CJSONRPC::m_initialized = false;
 
@@ -105,7 +108,7 @@ void CJSONRPC::Initialize()
     CJSONServiceDescription::AddNotification(JSONRPC_SERVICE_NOTIFICATIONS[index]);
   
   m_initialized = true;
-  CLog::Log(LOGINFO, "JSONRPC v%s: Successfully initialized", CJSONServiceDescription::GetVersion());
+  LOG4CPLUS_INFO(logger, "JSONRPC v" << CJSONServiceDescription::GetVersion() << ": Successfully initialized");
 }
 
 void CJSONRPC::Cleanup()
@@ -232,8 +235,7 @@ std::string CJSONRPC::MethodCall(const std::string &inputString, ITransportLayer
   CVariant inputroot, outputroot, result;
   bool hasResponse = false;
 
-  if(g_advancedSettings.CanLogComponent(LOGJSONRPC))
-    CLog::Log(LOGDEBUG, "JSONRPC: Incoming request: %s", inputString.c_str());
+  LOG4CPLUS_DEBUG(logger, "JSONRPC: Incoming request: " << inputString);
 
   inputroot = CJSONVariantParser::Parse((unsigned char *)inputString.c_str(), inputString.length());
   if (!inputroot.isNull())
@@ -242,7 +244,7 @@ std::string CJSONRPC::MethodCall(const std::string &inputString, ITransportLayer
     {
       if (inputroot.size() <= 0)
       {
-        CLog::Log(LOGERROR, "JSONRPC: Empty batch call\n");
+        LOG4CPLUS_ERROR(logger, "JSONRPC: Empty batch call");
         BuildResponse(inputroot, InvalidRequest, CVariant(), outputroot);
         hasResponse = true;
       }
@@ -264,7 +266,7 @@ std::string CJSONRPC::MethodCall(const std::string &inputString, ITransportLayer
   }
   else
   {
-    CLog::Log(LOGERROR, "JSONRPC: Failed to parse '%s'\n", inputString.c_str());
+    LOG4CPLUS_ERROR(logger, "JSONRPC: Failed to parse '" << inputString << "'");
     BuildResponse(inputroot, ParseError, CVariant(), outputroot);
     hasResponse = true;
   }
@@ -296,7 +298,7 @@ bool CJSONRPC::HandleMethodCall(const CVariant& request, CVariant& response, ITr
   }
   else
   {
-    CLog::Log(LOGERROR, "JSONRPC: Failed to parse '%s'\n", CJSONVariantWriter::Write(request, true).c_str());
+    LOG4CPLUS_ERROR(logger, "JSONRPC: Failed to parse '" << CJSONVariantWriter::Write(request, true) << "'");
     errorCode = InvalidRequest;
   }
 

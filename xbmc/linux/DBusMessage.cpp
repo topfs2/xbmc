@@ -22,14 +22,17 @@
 #include "utils/log.h"
 #include "settings/AdvancedSettings.h"
 
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("linux.dbus.message");
+
 CDBusMessage::CDBusMessage(const char *destination, const char *object, const char *interface, const char *method)
 {
   m_reply = NULL;
   m_message = dbus_message_new_method_call (destination, object, interface, method);
   m_haveArgs = false;
 
-  if (g_advancedSettings.CanLogComponent(LOGDBUS))
-    CLog::Log(LOGDEBUG, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
+  LOG4CPLUS_DEBUG(logger, "DBus: Creating message to " << destination << " on " << object << " with interface " << interface << " and method " << method);
 }
 
 CDBusMessage::~CDBusMessage()
@@ -99,7 +102,7 @@ DBusMessage *CDBusMessage::Send(DBusBusType type)
   DBusMessage *returnMessage = Send(con, &error);
 
   if (dbus_error_is_set(&error))
-    CLog::Log(LOGERROR, "DBus: Error %s - %s", error.name, error.message);
+    LOG4CPLUS_DEBUG(logger, "DBus: Error " << error.name << " - " << error.message);
 
   dbus_error_free (&error);
   dbus_connection_unref(con);

@@ -600,7 +600,6 @@ void CSettings::InitializeOptionFillers()
 #endif
   m_settingsManager->RegisterSettingOptionsFiller("verticalsyncs", CDisplaySettings::SettingOptionsVerticalSyncsFiller);
   m_settingsManager->RegisterSettingOptionsFiller("keyboardlayouts", CKeyboardLayout::SettingOptionsKeyboardLayoutsFiller);
-  m_settingsManager->RegisterSettingOptionsFiller("loggingcomponents", CAdvancedSettings::SettingOptionsLoggingComponentsFiller);
 }
 
 void CSettings::InitializeConditions()

@@ -51,7 +51,7 @@ CGUIWindowDebugInfo::~CGUIWindowDebugInfo(void)
 
 void CGUIWindowDebugInfo::UpdateVisibility()
 {
-  if (LOG_LEVEL_DEBUG_FREEMEM <= g_advancedSettings.m_logLevel || g_SkinInfo->IsDebugging())
+  if (g_SkinInfo->IsDebugging())
     Show();
   else
     Close();
@@ -97,24 +97,6 @@ void CGUIWindowDebugInfo::Process(unsigned int currentTime, CDirtyRegionList &di
     return;
 
   CStdString info;
-  if (LOG_LEVEL_DEBUG_FREEMEM <= g_advancedSettings.m_logLevel)
-  {
-    MEMORYSTATUSEX stat;
-    stat.dwLength = sizeof(MEMORYSTATUSEX);
-    GlobalMemoryStatusEx(&stat);
-    CStdString profiling = CGUIControlProfiler::IsRunning() ? " (profiling)" : "";
-    CStdString strCores = g_cpuInfo.GetCoresUsageString();
-    std::string lcAppName = CCompileInfo::GetAppName();
-    StringUtils::ToLower(lcAppName);
-#if !defined(TARGET_POSIX)
-    info = StringUtils::Format("LOG: %s%s.log\nMEM: %" PRIu64"/%" PRIu64" KB - FPS: %2.1f fps\nCPU: %s%s", g_advancedSettings.m_logFolder.c_str(), lcAppName.c_str(),
-                               stat.ullAvailPhys/1024, stat.ullTotalPhys/1024, g_infoManager.GetFPS(), strCores.c_str(), profiling.c_str());
-#else
-    double dCPU = m_resourceCounter.GetCPUUsage();
-    info = StringUtils::Format("LOG: %s%s.log\nMEM: %" PRIu64"/%" PRIu64" KB - FPS: %2.1f fps\nCPU: %s (CPU-XBMC %4.2f%%%s)", g_advancedSettings.m_logFolder.c_str(), lcAppName.c_str(),
-                               stat.ullAvailPhys/1024, stat.ullTotalPhys/1024, g_infoManager.GetFPS(), strCores.c_str(), dCPU, profiling.c_str());
-#endif
-  }
 
   // render the skin debug info
   if (g_SkinInfo->IsDebugging())

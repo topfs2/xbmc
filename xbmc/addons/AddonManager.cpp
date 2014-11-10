@@ -28,8 +28,8 @@
 #include "LangInfo.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
-#include "utils/log.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
 #ifdef HAS_VISUALISATION
 #include "Visualisation.h"
 #endif
@@ -51,11 +51,13 @@
 
 using namespace std;
 using namespace XFILE;
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("addons.AddonManager");
 
 namespace ADDON
 {
 
-cp_log_severity_t clog_to_cp(int lvl);
 void cp_fatalErrorHandler(const char *msg);
 void cp_logger(cp_log_severity_t level, const char *msg, const char *apid, void *user_data);
 
@@ -96,7 +98,7 @@ AddonPtr CAddonMgr::Factory(const cp_extension_t *props)
         AddonVersion ver2 = AddonVersion("2.0");
         if (ver1 < ver2)
         {
-          CLog::Log(LOGINFO,"%s: Weather add-ons for api < 2.0 unsupported (%s)",__FUNCTION__,result->ID().c_str());
+          LOG4CPLUS_INFO(logger, "Weather addons for api < 2.0 unsupported (" << result->ID() << ")");
           return AddonPtr();
         }
         return result;
@@ -198,7 +200,7 @@ bool CAddonMgr::CheckUserDirs(const cp_cfg_element_t *settings)
     {
       if (!CUtil::CreateDirectoryEx(path))
       {
-        CLog::Log(LOGERROR, "CAddonMgr::CheckUserDirs: Unable to create directory %s.", path.c_str());
+        LOG4CPLUS_ERROR(logger, "CAddonMgr::CheckUserDirs: Unable to create directory " << path);
         return false;
       }
     }
@@ -256,7 +258,7 @@ bool CAddonMgr::Init()
 
   if (!m_cpluff->IsLoaded())
   {
-    CLog::Log(LOGERROR, "ADDONS: Fatal Error, could not load libcpluff");
+    LOG4CPLUS_ERROR(logger, "Fatal Error, could not load libcpluff");
     return false;
   }
 
@@ -266,7 +268,7 @@ bool CAddonMgr::Init()
   status = m_cpluff->init();
   if (status != CP_OK)
   {
-    CLog::Log(LOGERROR, "ADDONS: Fatal Error, cp_init() returned status: %i", status);
+    LOG4CPLUS_ERROR(logger, "Fatal Error, cp_init() returned status: " << status);
     return false;
   }
 
@@ -279,15 +281,14 @@ bool CAddonMgr::Init()
   status = m_cpluff->register_pcollection(m_cp_context, CSpecialProtocol::TranslatePath("special://xbmcbin/addons").c_str());
   if (status != CP_OK)
   {
-    CLog::Log(LOGERROR, "ADDONS: Fatal Error, cp_register_pcollection() returned status: %i", status);
+    LOG4CPLUS_ERROR(logger, "Fatal Error, cp_register_pcollection() returned status: " << status);
     return false;
   }
 
-  status = m_cpluff->register_logger(m_cp_context, cp_logger,
-      &CAddonMgr::Get(), clog_to_cp(g_advancedSettings.m_logLevel));
+  status = m_cpluff->register_logger(m_cp_context, cp_logger, &CAddonMgr::Get(), CP_LOG_DEBUG);
   if (status != CP_OK)
   {
-    CLog::Log(LOGERROR, "ADDONS: Fatal Error, cp_register_logger() returned status: %i", status);
+    LOG4CPLUS_ERROR(logger, "Fatal Error, cp_register_logger() returned status: " << status);
     return false;
   }
 
@@ -298,7 +299,9 @@ bool CAddonMgr::Init()
   {
     VECADDONS::iterator it = repos.begin();
     for (;it != repos.end(); ++it)
-      CLog::Log(LOGNOTICE, "ADDONS: Using repository %s", (*it)->ID().c_str());
+    {
+      LOG4CPLUS_INFO(logger, "Using repository " << (*it)->ID());
+    }
   }
 
   return true;
@@ -867,7 +870,7 @@ bool CAddonMgr::LoadAddonDescriptionFromMemory(const TiXmlElement *root, AddonPt
 
 bool CAddonMgr::StartServices(const bool beforelogin)
 {
-  CLog::Log(LOGDEBUG, "ADDON: Starting service addons.");
+  LOG4CPLUS_DEBUG(logger, "Starting service addons.");
 
   VECADDONS services;
   if (!GetAddons(ADDON_SERVICE, services))
@@ -890,7 +893,7 @@ bool CAddonMgr::StartServices(const bool beforelogin)
 
 void CAddonMgr::StopServices(const bool onlylogin)
 {
-  CLog::Log(LOGDEBUG, "ADDON: Stopping service addons.");
+  LOG4CPLUS_DEBUG(logger, "Stopping service addons.");
 
   VECADDONS services;
   if (!GetAddons(ADDON_SERVICE, services))
@@ -908,31 +911,27 @@ void CAddonMgr::StopServices(const bool onlylogin)
   }
 }
 
-int cp_to_clog(cp_log_severity_t lvl)
-{
-  if (lvl >= CP_LOG_ERROR)
-    return LOGINFO;
-  return LOGDEBUG;
-}
-
-cp_log_severity_t clog_to_cp(int lvl)
-{
-  if (lvl >= LOG_LEVEL_DEBUG)
-    return CP_LOG_INFO;
-  return CP_LOG_ERROR;
-}
-
 void cp_fatalErrorHandler(const char *msg)
 {
-  CLog::Log(LOGERROR, "ADDONS: CPluffFatalError(%s)", msg);
+  LOG4CPLUS_ERROR(logger, "ADDONS: CPluffFatalError(" << msg << ")");
 }
 
 void cp_logger(cp_log_severity_t level, const char *msg, const char *apid, void *user_data)
 {
-  if(!apid)
-    CLog::Log(cp_to_clog(level), "ADDON: cpluff: '%s'", msg);
+  if (!apid)
+  {
+    if (level >= CP_LOG_ERROR)
+      LOG4CPLUS_INFO(logger, "cpluff: '" << msg << "'");
+    else
+      LOG4CPLUS_DEBUG(logger, "cpluff: '" << msg << "'");
+  }
   else
-    CLog::Log(cp_to_clog(level), "ADDON: cpluff: '%s' reports '%s'", apid, msg);
+  {
+    if (level >= CP_LOG_ERROR)
+      LOG4CPLUS_INFO(logger, "cpluff: '" << apid << "' reports '" << msg);
+    else
+      LOG4CPLUS_DEBUG(logger, "cpluff: '" << apid << "' reports '" << msg);
+  }
 }
 
 } /* namespace ADDON */

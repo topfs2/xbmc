@@ -22,6 +22,7 @@
 #include "XBDateTime.h"
 #include "utils/Job.h"
 #include "settings/lib/ISettingsHandler.h"
+#include "threads/CriticalSection.h"
 #include <string>
 
 class CWakeOnAccess : private IJobCallback, public ISettingsHandler

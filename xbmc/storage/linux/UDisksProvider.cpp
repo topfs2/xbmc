@@ -26,6 +26,10 @@
 #include "utils/URIUtils.h"
 #include "PosixMountProvider.h"
 
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("storage.linux.udisks");
+
 CUDiskDevice::CUDiskDevice(const char *DeviceKitUDI)
 {
   m_DeviceKitUDI = DeviceKitUDI;
@@ -88,7 +92,7 @@ bool CUDiskDevice::Mount()
 {
   if (!m_isMounted && !m_isSystemInternal && m_isFileSystem)
   {
-    CLog::Log(LOGDEBUG, "UDisks: Mounting %s", m_DeviceKitUDI.c_str());
+    LOG4CPLUS_DEBUG(logger, "UDisks: Mounting " << m_DeviceKitUDI);
     CDBusMessage message("org.freedesktop.UDisks", m_DeviceKitUDI.c_str(), "org.freedesktop.UDisks.Device", "FilesystemMount");
     message.AppendArgument("");
     const char *array[] = {};
@@ -101,7 +105,7 @@ bool CUDiskDevice::Mount()
       if (dbus_message_get_args (reply, NULL, DBUS_TYPE_STRING, &mountPoint, DBUS_TYPE_INVALID))
       {
         m_MountPath = mountPoint;
-        CLog::Log(LOGDEBUG, "UDisks: Successfully mounted %s on %s", m_DeviceKitUDI.c_str(), mountPoint);
+        LOG4CPLUS_INFO(logger, "UDisks: Successfully mounted " << m_DeviceKitUDI << " on " << mountPoint);
         m_isMountedByUs = m_isMounted = true;
       }
     }
@@ -109,7 +113,7 @@ bool CUDiskDevice::Mount()
     return m_isMounted;
   }
   else
-    CLog::Log(LOGDEBUG, "UDisks: Is not able to mount %s", toString().c_str());
+    LOG4CPLUS_WARN(logger, "UDisks: Is not able to mount " << toString());
 
   return false;
 }
@@ -130,7 +134,7 @@ bool CUDiskDevice::UnMount()
     return !m_isMounted;
   }
   else
-    CLog::Log(LOGDEBUG, "UDisks: Is not able to unmount %s", toString().c_str());
+    LOG4CPLUS_WARN(logger, "UDisks: Is not able to unmount " << toString());
 
   return false;
 }
@@ -191,7 +195,7 @@ CUDisksProvider::CUDisksProvider()
 
   if (dbus_error_is_set(&m_error))
   {
-    CLog::Log(LOGERROR, "UDisks: Failed to attach to signal %s", m_error.message);
+    LOG4CPLUS_ERROR(logger, "UDisks: Failed to attach to signal " << m_error.message);
     dbus_connection_close(m_connection);
     dbus_connection_unref(m_connection);
     m_connection = NULL;
@@ -219,11 +223,11 @@ CUDisksProvider::~CUDisksProvider()
 
 void CUDisksProvider::Initialize()
 {
-  CLog::Log(LOGDEBUG, "Selected UDisks as storage provider");
+  LOG4CPLUS_DEBUG(logger, "Selected UDisks as storage provider");
   m_DaemonVersion = atoi(CDBusUtil::GetVariant("org.freedesktop.UDisks", "/org/freedesktop/UDisks", "org.freedesktop.UDisks", "DaemonVersion").asString().c_str());
-  CLog::Log(LOGDEBUG, "UDisks: DaemonVersion %i", m_DaemonVersion);
+  LOG4CPLUS_DEBUG(logger, "UDisks: DaemonVersion " << m_DaemonVersion);
 
-  CLog::Log(LOGDEBUG, "UDisks: Querying available devices");
+  LOG4CPLUS_DEBUG(logger, "UDisks: Querying available devices");
   std::vector<std::string> devices = EnumerateDisks();
   for (unsigned int i = 0; i < devices.size(); i++)
     DeviceAdded(devices[i].c_str(), NULL);
@@ -293,7 +297,7 @@ bool CUDisksProvider::HasUDisks()
   if (!dbus_error_is_set(&error))
     hasUDisks = true;
   else
-    CLog::Log(LOGDEBUG, "UDisks: %s - %s", error.name, error.message);
+    LOG4CPLUS_DEBUG(logger, "UDisks: " << error.name << " - " << error.message);
 
   dbus_error_free (&error);
   if (con)
@@ -304,12 +308,11 @@ bool CUDisksProvider::HasUDisks()
 
 void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *callback)
 {
-  if (g_advancedSettings.CanLogComponent(LOGDBUS))
-    CLog::Log(LOGDEBUG, "UDisks: DeviceAdded (%s)", object);
+  LOG4CPLUS_DEBUG(logger, "UDisks: DeviceAdded (" << object << ")");
 
   if (m_AvailableDevices[object])
   {
-    CLog::Log(LOGWARNING, "UDisks: Inconsistency found! DeviceAdded on an indexed disk");
+    LOG4CPLUS_WARN(logger, "UDisks: Inconsistency found! DeviceAdded on an indexed disk");
     delete m_AvailableDevices[object];
   }
 
@@ -320,12 +323,11 @@ void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *ca
   if (g_advancedSettings.m_handleMounting)
     device->Mount();
 
-  if (g_advancedSettings.CanLogComponent(LOGDBUS))
-    CLog::Log(LOGDEBUG, "UDisks: DeviceAdded - %s", device->toString().c_str());
+  LOG4CPLUS_DEBUG(logger, "UDisks: DeviceAdded - " << device->toString());
 
   if (device->m_isMounted && device->IsApproved())
   {
-    CLog::Log(LOGINFO, "UDisks: Added %s", device->m_MountPath.c_str());
+    LOG4CPLUS_INFO(logger, "UDisks: Added " << device->m_MountPath);
     if (callback)
       callback->OnStorageAdded(device->m_Label, device->m_MountPath);
   }
@@ -333,8 +335,7 @@ void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *ca
 
 void CUDisksProvider::DeviceRemoved(const char *object, IStorageEventsCallback *callback)
 {
-  if (g_advancedSettings.CanLogComponent(LOGDBUS))
-    CLog::Log(LOGDEBUG, "UDisks: DeviceRemoved (%s)", object);
+  LOG4CPLUS_DEBUG(logger, "UDisks: DeviceRemoved (" << object << ")");
 
   CUDiskDevice *device = m_AvailableDevices[object];
   if (device)
@@ -349,13 +350,12 @@ void CUDisksProvider::DeviceRemoved(const char *object, IStorageEventsCallback *
 
 void CUDisksProvider::DeviceChanged(const char *object, IStorageEventsCallback *callback)
 {
-  if (g_advancedSettings.CanLogComponent(LOGDBUS))
-    CLog::Log(LOGDEBUG, "UDisks: DeviceChanged (%s)", object);
+  LOG4CPLUS_DEBUG(logger, "UDisks: DeviceChanged (" << object << ")");
 
   CUDiskDevice *device = m_AvailableDevices[object];
   if (device == NULL)
   {
-    CLog::Log(LOGWARNING, "UDisks: Inconsistency found! DeviceChanged on an unindexed disk");
+    LOG4CPLUS_WARN(logger, "UDisks: Inconsistency found! DeviceChanged on an unindexed disk");
     DeviceAdded(object, callback);
   }
   else
@@ -372,8 +372,7 @@ void CUDisksProvider::DeviceChanged(const char *object, IStorageEventsCallback *
     else if (mounted && !device->m_isMounted && callback)
       callback->OnStorageSafelyRemoved(device->m_Label);
 
-    if (g_advancedSettings.CanLogComponent(LOGDBUS))
-      CLog::Log(LOGDEBUG, "UDisks: DeviceChanged - %s", device->toString().c_str());
+    LOG4CPLUS_DEBUG(logger, "UDisks: DeviceChanged - " << device->toString());
   }
 }
 

@@ -33,33 +33,49 @@
 #include "utils/Variant.h"
 
 #include <string>
+#include <log4cplus/logger.h>
+#include <log4cplus/loggingmacros.h>
 
 using namespace XFILE;
 using namespace std;
+using namespace log4cplus;
 
-static int RTMP_level=0;
+static Logger logger = Logger::getInstance("cores.dvdplayer.input.rtmp");
+
 extern "C" 
 {
   static void CDVDInputStreamRTMP_Log(int level, const char *fmt, va_list args)
   {
     char buf[2048];
-
-    if (level > RTMP_level)
-      return;
+    vsnprintf(buf, sizeof(buf), fmt, args);
 
     switch(level) 
     {
       default:
-      case RTMP_LOGCRIT:    level = LOGFATAL;   break;
-      case RTMP_LOGERROR:   level = LOGERROR;   break;
-      case RTMP_LOGWARNING: level = LOGWARNING; break;
-      case RTMP_LOGINFO:    level = LOGNOTICE;  break;
-      case RTMP_LOGDEBUG:   level = LOGINFO;    break;
-      case RTMP_LOGDEBUG2:  level = LOGDEBUG;   break;
-    }
+      case RTMP_LOGCRIT:
+        LOG4CPLUS_FATAL(logger, buf);
+        break;
 
-    vsnprintf(buf, sizeof(buf), fmt, args);
-    CLog::Log(level, "%s", buf);
+      case RTMP_LOGERROR:
+        LOG4CPLUS_ERROR(logger, buf);
+        break;
+
+      case RTMP_LOGWARNING:
+        LOG4CPLUS_WARN(logger, buf);
+        break;
+
+      case RTMP_LOGINFO:
+        LOG4CPLUS_INFO(logger, buf);
+        break;
+
+      case RTMP_LOGDEBUG:
+        LOG4CPLUS_DEBUG(logger, buf);
+        break;
+
+      case RTMP_LOGDEBUG2:
+        LOG4CPLUS_TRACE(logger, buf);
+        break;
+    }
   }
 }
 
@@ -68,23 +84,9 @@ CDVDInputStreamRTMP::CDVDInputStreamRTMP() : CDVDInputStream(DVDSTREAM_TYPE_RTMP
   if (m_libRTMP.Load())
   {
     CLog::Log(LOGINFO,"%s: Using external libRTMP",__FUNCTION__);
-    RTMP_LogLevel level;
-
     m_libRTMP.LogSetCallback(CDVDInputStreamRTMP_Log);
-    switch (g_advancedSettings.m_logLevel)
-    {
-      case LOG_LEVEL_DEBUG_FREEMEM:
-      case LOG_LEVEL_DEBUG: level = RTMP_LOGDEBUG; break;
-      case LOG_LEVEL_NORMAL: level = RTMP_LOGINFO; break;
-      default: level = RTMP_LOGCRIT; break;
-    }
+    m_libRTMP.LogSetLevel(RTMP_LOGDEBUG2);
 
-    if (g_advancedSettings.CanLogComponent(LOGRTMP))
-      level = RTMP_LOGDEBUG2;
-
-    m_libRTMP.LogSetLevel(level);
-    RTMP_level = level;
-    
     m_rtmp = m_libRTMP.Alloc();
     m_libRTMP.Init(m_rtmp);
   }

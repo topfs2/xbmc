@@ -51,6 +51,9 @@
 using namespace std;
 using namespace TagLib;
 using namespace MUSIC_INFO;
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("music.tags.taglib");
 
 template<class T>
 class TagStringHandler : public T
@@ -109,7 +112,7 @@ bool CTagLoaderTagLib::Load(const CStdString& strFileName, CMusicInfoTag& tag, c
   TagLibVFSStream*           stream = new TagLibVFSStream(strFileName, true);
   if (!stream)
   {
-    CLog::Log(LOGERROR, "could not create TagLib VFS stream for: %s", strFileName.c_str());
+    LOG4CPLUS_ERROR(logger, "could not create TagLib VFS stream for: " << strFileName);
     return false;
   }
   
@@ -180,7 +183,7 @@ bool CTagLoaderTagLib::Load(const CStdString& strFileName, CMusicInfoTag& tag, c
   {
     delete file;
     delete stream;
-    CLog::Log(LOGDEBUG, "file could not be opened for tag reading");
+    LOG4CPLUS_DEBUG(logger, "file could not be opened for tag reading");
     return false;
   }
 
@@ -303,8 +306,8 @@ bool CTagLoaderTagLib::ParseASF(ASF::Tag *asf, EmbeddedArt *art, CMusicInfoTag& 
       if (art)
         art->set((const uint8_t *)pic.picture().data(), pic.picture().size(), pic.mimeType().toCString());
     }
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
-      CLog::Log(LOGDEBUG, "unrecognized ASF tag name: %s", it->first.toCString(true));
+    else
+      LOG4CPLUS_DEBUG(logger, "unrecognized ASF tag name: " << it->first.toCString(true));
   }
   // artist may be specified in the ContentDescription block rather than using the 'Author' attribute.
   if (tag.GetArtist().empty())
@@ -408,8 +411,8 @@ bool CTagLoaderTagLib::ParseID3v2Tag(ID3v2::Tag *id3v2, EmbeddedArt *art, CMusic
         else if (desc == "REPLAYGAIN_ALBUM_PEAK")       tag.SetReplayGainAlbumPeak((float)atof(stringList.front().toCString(true)));
         else if (desc == "ALBUMARTIST")                 SetAlbumArtist(tag, StringListToVectorString(stringList));
         else if (desc == "ALBUM ARTIST")                SetAlbumArtist(tag, StringListToVectorString(stringList));
-        else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
-          CLog::Log(LOGDEBUG, "unrecognized user text tag detected: TXXX:%s", frame->description().toCString(true));
+        else
+          LOG4CPLUS_DEBUG(logger, "unrecognized user text tag detected: TXXX: " << frame->description().toCString(true));
       }
     else if (it->first == "UFID")
       // Loop through any UFID frames and set them
@@ -454,12 +457,12 @@ bool CTagLoaderTagLib::ParseID3v2Tag(ID3v2::Tag *id3v2, EmbeddedArt *art, CMusic
               popFrame->email() != "no@email" &&
               popFrame->email() != "quodlibet@lists.sacredchao.net" &&
               popFrame->email() != "rating@winamp.com")
-            CLog::Log(LOGDEBUG, "unrecognized ratings schema detected: %s", popFrame->email().toCString(true));
+            LOG4CPLUS_DEBUG(logger, "unrecognized ratings schema detected: " << popFrame->email().toCString(true));
           tag.SetRating(POPMtoXBMC(popFrame->rating()));
         }
       }
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
-      CLog::Log(LOGDEBUG, "unrecognized ID3 frame detected: %c%c%c%c", it->first[0], it->first[1], it->first[2], it->first[3]);
+    else
+      LOG4CPLUS_DEBUG(logger, "unrecognized ID3 frame detected: " << it->first[0] << it->first[1] << it->first[2] << it->first[3]);
   } // for
 
   // Process the extracted picture frames; 0 = CoverArt, 1 = Other, 2 = First Found picture
@@ -507,8 +510,8 @@ bool CTagLoaderTagLib::ParseAPETag(APE::Tag *ape, EmbeddedArt *art, CMusicInfoTa
     else if (it->first == "MUSICBRAINZ_ALBUMARTIST")   SetAlbumArtist(tag, StringListToVectorString(it->second.toStringList()));
     else if (it->first == "MUSICBRAINZ_ALBUMID")       tag.SetMusicBrainzAlbumID(it->second.toString().to8Bit(true));
     else if (it->first == "MUSICBRAINZ_TRACKID")       tag.SetMusicBrainzTrackID(it->second.toString().to8Bit(true));
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
-      CLog::Log(LOGDEBUG, "unrecognized APE tag: %s", it->first.toCString(true));
+    else
+      LOG4CPLUS_DEBUG(logger, "unrecognized APE tag: " << it->first.toCString(true));
   }
 
   return true;
@@ -585,8 +588,8 @@ bool CTagLoaderTagLib::ParseXiphComment(Ogg::XiphComment *xiph, EmbeddedArt *art
     {
       pictures[2].setMimeType(it->second.front());
     }
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
-      CLog::Log(LOGDEBUG, "unrecognized XipComment name: %s", it->first.toCString(true));
+    else
+      LOG4CPLUS_DEBUG(logger, "unrecognized XipComment name: " << it->first.toCString(true));
   }
 
   // Process the extracted picture frames; 0 = CoverArt, 1 = Other, 2 = COVERART/COVERARTMIME

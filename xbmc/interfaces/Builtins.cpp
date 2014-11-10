@@ -1768,12 +1768,6 @@ int CBuiltins::Execute(const std::string& execString)
     CGUIMessage msg(GUI_MSG_SEARCH, 0, 0, 0);
     g_windowManager.SendMessage(msg, WINDOW_VIDEO_NAV);
   }
-  else if (execute == "toggledebug")
-  {
-    bool debug = CSettings::Get().GetBool("debug.showloginfo");
-    CSettings::Get().SetBool("debug.showloginfo", !debug);
-    g_advancedSettings.SetDebugMode(!debug);
-  }
   else if (execute == "startpvrmanager")
   {
     g_application.StartPVRManager();

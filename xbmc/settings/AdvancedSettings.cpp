@@ -65,19 +65,6 @@ void CAdvancedSettings::OnSettingsLoaded()
   CLog::Log(LOGNOTICE, "Default Video Player: %s", m_videoDefaultPlayer.c_str());
   CLog::Log(LOGNOTICE, "Default Audio Player: %s", m_audioDefaultPlayer.c_str());
 
-  // setup any logging...
-  if (CSettings::Get().GetBool("debug.showloginfo"))
-  {
-    m_logLevel = std::max(m_logLevelHint, LOG_LEVEL_DEBUG_FREEMEM);
-    CLog::Log(LOGNOTICE, "Enabled debug logging due to GUI setting (%d)", m_logLevel);
-  }
-  else
-  {
-    m_logLevel = std::min(m_logLevelHint, LOG_LEVEL_DEBUG/*LOG_LEVEL_NORMAL*/);
-    CLog::Log(LOGNOTICE, "Disabled debug logging due to GUI setting. Level %d.", m_logLevel);
-  }
-  CLog::SetLogLevel(m_logLevel);
-
   m_extraLogEnabled = CSettings::Get().GetBool("debug.extralogging");
   setExtraLogLevel(CSettings::Get().GetList("debug.setextraloglevel"));
 }
@@ -93,9 +80,7 @@ void CAdvancedSettings::OnSettingChanged(const CSetting *setting)
     return;
 
   const std::string &settingId = setting->GetId();
-  if (settingId == "debug.showloginfo")
-    SetDebugMode(((CSettingBool*)setting)->GetValue());
-  else if (settingId == "debug.extralogging")
+  if (settingId == "debug.extralogging")
     m_extraLogEnabled = static_cast<const CSettingBool*>(setting)->GetValue();
   else if (settingId == "debug.setextraloglevel")
     setExtraLogLevel(CSettingUtils::GetList(static_cast<const CSettingList*>(setting)));
@@ -399,7 +384,6 @@ void CAdvancedSettings::Initialize()
   m_stereoscopicregex_sbs = "[-. _]h?sbs[-. _]";
   m_stereoscopicregex_tab = "[-. _]h?tab[-. _]";
 
-  m_logLevelHint = m_logLevel = LOG_LEVEL_NORMAL;
   m_extraLogEnabled = false;
   m_extraLogLevels = 0;
 
@@ -820,22 +804,6 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
   if (pElement)
   {
     XMLUtils::GetBoolean(pElement, "remotethumbs", m_bFTPThumbs);
-  }
-
-  pElement = pRootElement->FirstChildElement("loglevel");
-  if (pElement)
-  { // read the loglevel setting, so set the setting advanced to hide it in GUI
-    // as altering it will do nothing - we don't write to advancedsettings.xml
-    XMLUtils::GetInt(pRootElement, "loglevel", m_logLevelHint, LOG_LEVEL_NONE, LOG_LEVEL_MAX);
-    const char* hide = pElement->Attribute("hide");
-    if (hide == NULL || strnicmp("false", hide, 4) != 0)
-    {
-      CSetting *setting = CSettings::Get().GetSetting("debug.showloginfo");
-      if (setting != NULL)
-        setting->SetVisible(false);
-    }
-    g_advancedSettings.m_logLevel = std::max(g_advancedSettings.m_logLevel, g_advancedSettings.m_logLevelHint);
-    CLog::SetLogLevel(g_advancedSettings.m_logLevel);
   }
 
   XMLUtils::GetString(pRootElement, "cddbaddress", m_cddbAddress);
@@ -1325,61 +1293,6 @@ float CAdvancedSettings::GetDisplayLatency(float refreshrate)
   }
 
   return delay; // in seconds
-}
-
-void CAdvancedSettings::SetDebugMode(bool debug)
-{
-  if (debug)
-  {
-    int level = std::max(m_logLevelHint, LOG_LEVEL_DEBUG_FREEMEM);
-    m_logLevel = level;
-    CLog::SetLogLevel(level);
-    CLog::Log(LOGNOTICE, "Enabled debug logging due to GUI setting. Level %d.", level);
-  }
-  else
-  {
-    int level = std::min(m_logLevelHint, LOG_LEVEL_DEBUG/*LOG_LEVEL_NORMAL*/);
-    CLog::Log(LOGNOTICE, "Disabled debug logging due to GUI setting. Level %d.", level);
-    m_logLevel = level;
-    CLog::SetLogLevel(level);
-  }
-}
-
-bool CAdvancedSettings::CanLogComponent(int component) const
-{
-  if (!m_extraLogEnabled || component <= 0)
-    return false;
-
-  return ((m_extraLogLevels & component) == component);
-}
-
-void CAdvancedSettings::SettingOptionsLoggingComponentsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
-{
-  list.push_back(std::make_pair(g_localizeStrings.Get(669), LOGSAMBA));
-  list.push_back(std::make_pair(g_localizeStrings.Get(670), LOGCURL));
-  list.push_back(std::make_pair(g_localizeStrings.Get(671), LOGCMYTH));
-  list.push_back(std::make_pair(g_localizeStrings.Get(672), LOGFFMPEG));
-#ifdef HAS_LIBRTMP
-  list.push_back(std::make_pair(g_localizeStrings.Get(673), LOGRTMP));
-#endif
-#ifdef HAS_DBUS
-  list.push_back(std::make_pair(g_localizeStrings.Get(674), LOGDBUS));
-#endif
-#ifdef HAS_JSONRPC
-  list.push_back(std::make_pair(g_localizeStrings.Get(675), LOGJSONRPC));
-#endif
-#ifdef HAS_ALSA
-  list.push_back(std::make_pair(g_localizeStrings.Get(676), LOGAUDIO));
-#endif
-#ifdef HAS_AIRTUNES
-  list.push_back(std::make_pair(g_localizeStrings.Get(677), LOGAIRTUNES));
-#endif
-#ifdef HAS_UPNP
-  list.push_back(std::make_pair(g_localizeStrings.Get(678), LOGUPNP));
-#endif
-#ifdef HAVE_LIBCEC
-  list.push_back(std::make_pair(g_localizeStrings.Get(679), LOGCEC));
-#endif
 }
 
 void CAdvancedSettings::setExtraLogLevel(const std::vector<CVariant> &components)

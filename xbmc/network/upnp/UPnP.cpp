@@ -51,8 +51,10 @@
 
 using namespace std;
 using namespace UPNP;
+using namespace log4cplus;
 
-NPT_SET_LOCAL_LOGGER("xbmc.upnp")
+NPT_SET_LOCAL_LOGGER("xbmc.upnp");
+static Logger logger = Logger::getInstance("network.upnp");
 
 #define UPNP_DEFAULT_MAX_RETURNED_ITEMS 200
 #define UPNP_DEFAULT_MIN_RETURNED_ITEMS 30
@@ -101,29 +103,36 @@ DLNA_ORG_FLAGS_VAL = '01500000000000000000000000000000'
 void
 NPT_Console::Output(const char* msg) { }
 
-int ConvertLogLevel(int nptLogLevel)
-{
-    if (nptLogLevel >= NPT_LOG_LEVEL_FATAL)
-        return LOGFATAL;
-    if (nptLogLevel >= NPT_LOG_LEVEL_SEVERE)
-        return LOGERROR;
-    if (nptLogLevel >= NPT_LOG_LEVEL_WARNING)
-        return LOGWARNING;
-    if (nptLogLevel >= NPT_LOG_LEVEL_INFO)
-        return LOGNOTICE;
-    if (nptLogLevel >= NPT_LOG_LEVEL_FINE)
-        return LOGINFO;
-
-    return LOGDEBUG;
-}
-
 void
 UPnPLogger(const NPT_LogRecord* record)
 {
-    if (!g_advancedSettings.CanLogComponent(LOGUPNP))
-        return;
+  // TODO Use an own logger with network.upnp.platinum?
+  switch (record->m_Level)
+  {
+    case NPT_LOG_LEVEL_FATAL:
+      LOG4CPLUS_FATAL(logger, "Platinum [" << record->m_LoggerName << "]: " << record->m_Message);
+      break;
 
-    CLog::Log(ConvertLogLevel(record->m_Level), "Platinum [%s]: %s", record->m_LoggerName, record->m_Message);
+    case NPT_LOG_LEVEL_SEVERE:
+      LOG4CPLUS_ERROR(logger, "Platinum [" << record->m_LoggerName << "]: " << record->m_Message);
+      break;
+
+    case NPT_LOG_LEVEL_WARNING:
+      LOG4CPLUS_WARN(logger, "Platinum [" << record->m_LoggerName << "]: " << record->m_Message);
+      break;
+
+    case NPT_LOG_LEVEL_INFO:
+      LOG4CPLUS_INFO(logger, "Platinum [" << record->m_LoggerName << "]: " << record->m_Message);
+      break;
+
+    case NPT_LOG_LEVEL_FINE:
+      LOG4CPLUS_DEBUG(logger, "Platinum [" << record->m_LoggerName << "]: " << record->m_Message);
+      break;
+
+    default:
+      LOG4CPLUS_TRACE(logger, "Platinum [" << record->m_LoggerName << "]: " << record->m_Message);
+      break;
+  }
 }
 
 namespace UPNP
@@ -213,7 +222,7 @@ public:
             path += id.c_str();
         }
 
-        CLog::Log(LOGDEBUG, "UPNP: notfified container update %s", (const char*)path);
+        LOG4CPLUS_DEBUG(logger, "UPNP: notfified container update " << (const char*)path);
         CGUIMessage message(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE_PATH);
         message.SetStringParam(path.GetChars());
         g_windowManager.SendThreadMessage(message);
@@ -227,7 +236,7 @@ public:
             return SaveFileState(temp, CBookmark(), watched);
         }
         else {
-            CLog::Log(LOGDEBUG, "UPNP: Marking video item %s as watched", item.GetPath().c_str());
+            LOG4CPLUS_DEBUG(logger, "UPNP: Marking video item " << item.GetPath() << " as watched");
             return InvokeUpdateObject(item.GetPath().c_str(), "<upnp:playCount>1</upnp:playCount>", "<upnp:playCount>0</upnp:playCount>");
         }
     }
@@ -243,7 +252,7 @@ public:
         NPT_String new_value;
 
         if (item.GetVideoInfoTag()->m_resumePoint.timeInSeconds != bookmark.timeInSeconds) {
-            CLog::Log(LOGDEBUG, "UPNP: Updating resume point for item %s", path.c_str());
+            LOG4CPLUS_DEBUG(logger, "UPNP: Updating resume point for item " << path);
             long time = (long)bookmark.timeInSeconds;
             if (time < 0) time = 0;
             curr_value.Append(NPT_String::Format("<upnp:lastPlaybackPosition>%ld</upnp:lastPlaybackPosition>",
@@ -251,7 +260,7 @@ public:
             new_value.Append(NPT_String::Format("<upnp:lastPlaybackPosition>%ld</upnp:lastPlaybackPosition>", time));
         }
         if (updatePlayCount) {
-            CLog::Log(LOGDEBUG, "UPNP: Marking video item %s as watched", path.c_str());
+            LOG4CPLUS_DEBUG(logger, "UPNP: Marking video item " << path << " as watched");
             if (!curr_value.IsEmpty()) curr_value.Append(",");
             if (!new_value.IsEmpty()) new_value.Append(",");
             curr_value.Append("<upnp:playCount>0</upnp:playCount>");
@@ -268,7 +277,7 @@ public:
         PLT_Service* cds;
         PLT_ActionReference action;
 
-        CLog::Log(LOGDEBUG, "UPNP: attempting to invoke UpdateObject for %s", id);
+        LOG4CPLUS_DEBUG(logger, "UPNP: attempting to invoke UpdateObject for " << id);
 
         // check this server supports UpdateObject action
         NPT_CHECK_LABEL(FindServer(url.GetHostName().c_str(), device),failed);
@@ -286,11 +295,11 @@ public:
 
         NPT_CHECK_LABEL(m_CtrlPoint->InvokeAction(action, NULL),failed);
 
-        CLog::Log(LOGDEBUG, "UPNP: invoked UpdateObject successfully");
+        LOG4CPLUS_DEBUG(logger, "UPNP: invoked UpdateObject successfully");
         return true;
 
     failed:
-        CLog::Log(LOGINFO, "UPNP: invoking UpdateObject failed");
+        LOG4CPLUS_INFO(logger, "UPNP: invoking UpdateObject failed");
         return false;
     }
 };

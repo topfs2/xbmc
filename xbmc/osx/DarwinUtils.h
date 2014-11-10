@@ -47,7 +47,6 @@ public:
   static bool        HasVideoToolboxDecoder(void);
   static int         BatteryLevel(void);
   static void        SetScheduling(int message);
-  static void        PrintDebugString(std::string debugString);
   static bool        CFStringRefToString(CFStringRef source, std::string& destination);
   static bool        CFStringRefToUTF8String(CFStringRef source, std::string& destination);
   static const std::string&  GetManufacturer(void);

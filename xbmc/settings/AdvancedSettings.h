@@ -132,9 +132,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     static void GetCustomRegexps(TiXmlElement *pRootElement, std::vector<std::string> &settings);
     static void GetCustomExtensions(TiXmlElement *pRootElement, CStdString& extensions);
 
-    bool CanLogComponent(int component) const;
-    static void SettingOptionsLoggingComponentsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-
     int m_audioHeadRoom;
     float m_ac3Gain;
     CStdString m_audioDefaultPlayer;
@@ -206,8 +203,10 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     float m_slideshowPanAmount;
 
     int m_songInfoDuration;
+/*
     int m_logLevel;
     int m_logLevelHint;
+*/
     bool m_extraLogEnabled;
     int m_extraLogLevels;
     CStdString m_cddbAddress;
@@ -388,8 +387,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     float GetDisplayLatency(float refreshrate);
     bool m_initialized;
-
-    void SetDebugMode(bool debug);
 
     // runtime settings which cannot be set from advancedsettings.xml
     CStdString m_pictureExtensions;

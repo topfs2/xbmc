@@ -112,13 +112,6 @@ void CAppParamParser::DisplayHelp()
   exit(0);
 }
 
-void CAppParamParser::EnableDebugMode()
-{
-  g_advancedSettings.m_logLevel     = LOG_LEVEL_DEBUG;
-  g_advancedSettings.m_logLevelHint = LOG_LEVEL_DEBUG;
-  CLog::SetLogLevel(g_advancedSettings.m_logLevel);
-}
-
 void CAppParamParser::ParseArg(const CStdString &arg)
 {
   if (arg == "-fs" || arg == "--fullscreen")
@@ -131,8 +124,6 @@ void CAppParamParser::ParseArg(const CStdString &arg)
     g_application.SetStandAlone(true);
   else if (arg == "-p" || arg  == "--portable")
     g_application.EnablePlatformDirectories(false);
-  else if (arg == "--debug")
-    EnableDebugMode();
   else if (arg == "--legacy-res")
     g_application.SetEnableLegacyRes(true);
   else if (arg == "--test")

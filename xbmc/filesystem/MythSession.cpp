@@ -40,6 +40,9 @@ extern "C"
 
 using namespace XFILE;
 using namespace std;
+using namespace log4cplus;
+
+static Logger logger = Logger::getInstance("filesystem.myth");
 
 #define MYTH_DEFAULT_PORT     6543
 #define MYTH_DEFAULT_USERNAME "mythtv"
@@ -61,7 +64,7 @@ void CMythSession::CheckIdle()
     CMythSession* session = *it;
     if ((XbmcThreads::SystemClockMillis() - session->m_timestamp) > (MYTH_IDLE_TIMEOUT * 1000) )
     {
-      CLog::Log(LOGINFO, "%s - closing idle connection to MythTV backend: %s", __FUNCTION__, session->m_hostname.c_str());
+      LOG4CPLUS_INFO(logger, "closing idle connection to MythTV backend: " << session->m_hostname);
       delete session;
       it = m_sessions.erase(it);
     }
@@ -83,19 +86,18 @@ CMythSession* CMythSession::AquireSession(const CURL& url)
     if (session->CanSupport(url))
     {
       m_sessions.erase(it);
-      CLog::Log(LOGDEBUG, "%s - Aquired existing MythTV session: %p", __FUNCTION__, session);
+      LOG4CPLUS_DEBUG(logger, "Aquired existing MythTV session: " << session);
       return session;
     }
   }
   CMythSession* session = new CMythSession(url);
-  CLog::Log(LOGINFO, "%s - Aquired new MythTV session for %s: %p", __FUNCTION__,
-            url.GetWithoutUserDetails().c_str(), session);
+  LOG4CPLUS_INFO(logger, "Aquired new MythTV session for " << url.GetWithoutUserDetails() << ": " << session);
   return session;
 }
 
 void CMythSession::ReleaseSession(CMythSession* session)
 {
-  CLog::Log(LOGDEBUG, "%s - Releasing MythTV session: %p", __FUNCTION__, session);
+  LOG4CPLUS_DEBUG(logger, "Releasing MythTV session: " << session);
   session->SetListener(NULL);
   session->m_timestamp = XbmcThreads::SystemClockMillis();
   CSingleLock lock(m_section_session);
@@ -373,12 +375,7 @@ CMythSession::CMythSession(const CURL& url) : CThread("MythSession")
   if (m_dll->IsLoaded())
   {
     m_dll->set_dbg_msgcallback(&CMythSession::LogCMyth);
-    if (g_advancedSettings.CanLogComponent(LOGCMYTH))
-      m_dll->dbg_level(CMYTH_DBG_ALL);
-    else if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG)
-      m_dll->dbg_level(CMYTH_DBG_DETAIL);
-    else
-      m_dll->dbg_level(CMYTH_DBG_ERROR);
+    m_dll->dbg_level(CMYTH_DBG_ALL);
   }
   m_all_recorded = NULL;
 }
@@ -427,59 +424,59 @@ void CMythSession::Process()
     switch (next)
     {
     case CMYTH_EVENT_UNKNOWN:
-      CLog::Log(LOGDEBUG, "%s - MythTV event UNKNOWN (error?)", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event UNKNOWN (error?)");
       break;
     case CMYTH_EVENT_CLOSE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event EVENT_CLOSE", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event EVENT_CLOSE");
       break;
     case CMYTH_EVENT_RECORDING_LIST_CHANGE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event RECORDING_LIST_CHANGE", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event RECORDING_LIST_CHANGE");
       ResetAllRecordedPrograms();
       break;
     case CMYTH_EVENT_RECORDING_LIST_CHANGE_ADD:
-      CLog::Log(LOGDEBUG, "%s - MythTV event RECORDING_LIST_CHANGE_ADD: %s", __FUNCTION__, buf);
+      LOG4CPLUS_DEBUG(logger, " event RECORDING_LIST_CHANGE_ADD: " << buf);
       ResetAllRecordedPrograms();
       break;
     case CMYTH_EVENT_RECORDING_LIST_CHANGE_UPDATE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event RECORDING_LIST_CHANGE_UPDATE", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event RECORDING_LIST_CHANGE_UPDATE");
       ResetAllRecordedPrograms();
       break;
     case CMYTH_EVENT_RECORDING_LIST_CHANGE_DELETE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event RECORDING_LIST_CHANGE_DELETE: %s", __FUNCTION__, buf);
+      LOG4CPLUS_DEBUG(logger, "MythTV event RECORDING_LIST_CHANGE_DELETE: " << buf);
       ResetAllRecordedPrograms();
       break;
     case CMYTH_EVENT_SCHEDULE_CHANGE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event SCHEDULE_CHANGE", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event SCHEDULE_CHANGE");
       break;
     case CMYTH_EVENT_DONE_RECORDING:
-      CLog::Log(LOGDEBUG, "%s - MythTV event DONE_RECORDING", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event DONE_RECORDING");
       break;
     case CMYTH_EVENT_QUIT_LIVETV:
-      CLog::Log(LOGDEBUG, "%s - MythTV event QUIT_LIVETV", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event QUIT_LIVETV");
       break;
     case CMYTH_EVENT_WATCH_LIVETV:
-      CLog::Log(LOGDEBUG, "%s - MythTV event LIVETV_WATCH", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event LIVETV_WATCH");
       break;
     case CMYTH_EVENT_LIVETV_CHAIN_UPDATE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event LIVETV_CHAIN_UPDATE: %s", __FUNCTION__, buf);
+      LOG4CPLUS_DEBUG(logger, "MythTV event LIVETV_CHAIN_UPDATE: " << buf);
       break;
     case CMYTH_EVENT_SIGNAL:
-      CLog::Log(LOGDEBUG, "%s - MythTV event SIGNAL", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event SIGNAL");
       break;
     case CMYTH_EVENT_ASK_RECORDING:
-      CLog::Log(LOGDEBUG, "%s - MythTV event ASK_RECORDING", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event ASK_RECORDING");
       break;
     case CMYTH_EVENT_SYSTEM_EVENT:
-      CLog::Log(LOGDEBUG, "%s - MythTV event SYSTEM_EVENT: %s", __FUNCTION__, buf);
+      LOG4CPLUS_DEBUG(logger, "MythTV event SYSTEM_EVENT: " << buf);
       break;
     case CMYTH_EVENT_UPDATE_FILE_SIZE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event UPDATE_FILE_SIZE: %s", __FUNCTION__, buf);
+      LOG4CPLUS_DEBUG(logger, "MythTV event UPDATE_FILE_SIZE: " << buf);
       break;
     case CMYTH_EVENT_GENERATED_PIXMAP:
-      CLog::Log(LOGDEBUG, "%s - MythTV event GENERATED_PIXMAP: %s", __FUNCTION__, buf);
+      LOG4CPLUS_DEBUG(logger, "MythTV event GENERATED_PIXMAP: " << buf);
       break;
     case CMYTH_EVENT_CLEAR_SETTINGS_CACHE:
-      CLog::Log(LOGDEBUG, "%s - MythTV event CLEAR_SETTINGS_CACHE", __FUNCTION__);
+      LOG4CPLUS_DEBUG(logger, "MythTV event CLEAR_SETTINGS_CACHE");
       break;
     }
 
@@ -517,7 +514,7 @@ cmyth_conn_t CMythSession::GetControl()
 
     m_control = m_dll->conn_connect_ctrl((char*)m_hostname.c_str(), m_port, 16*1024, 4096);
     if (!m_control)
-      CLog::Log(LOGERROR, "%s - unable to connect to server on %s:%d", __FUNCTION__, m_hostname.c_str(), m_port);
+      LOG4CPLUS_ERROR(logger, "unable to connect to server on " << m_hostname << ":" << m_port);
   }
   return m_control;
 }
@@ -532,7 +529,7 @@ cmyth_database_t CMythSession::GetDatabase()
     m_database = m_dll->database_init((char*)m_hostname.c_str(), (char*)MYTH_DEFAULT_DATABASE,
                                       (char*)m_username.c_str(), (char*)m_password.c_str());
     if (!m_database)
-      CLog::Log(LOGERROR, "%s - unable to connect to database on %s:%d", __FUNCTION__, m_hostname.c_str(), m_port);
+      LOG4CPLUS_ERROR(logger, "unable to connect to database on " << m_hostname << ":" << m_port);
   }
   return m_database;
 }
@@ -547,7 +544,7 @@ bool CMythSession::SetListener(IEventListener *listener)
     m_event = m_dll->conn_connect_event((char*)m_hostname.c_str(), m_port, 16*1024 , 4096);
     if (!m_event)
     {
-      CLog::Log(LOGERROR, "%s - unable to connect to server on %s:%d", __FUNCTION__, m_hostname.c_str(), m_port);
+      LOG4CPLUS_ERROR(logger, "unable to connect to server on " << m_hostname << ":" << m_port);
       return false;
     }
     /* start event handler thread */
@@ -606,16 +603,21 @@ void CMythSession::ResetAllRecordedPrograms()
 
 void CMythSession::LogCMyth(int level, char *msg)
 {
-  int xbmc_lvl = -1;
   switch (level)
   {
-    case CMYTH_DBG_NONE:  break;
-    case CMYTH_DBG_ERROR: xbmc_lvl = LOGERROR;   break;
-    case CMYTH_DBG_WARN:  xbmc_lvl = LOGWARNING; break;
-    case CMYTH_DBG_INFO:  xbmc_lvl = LOGINFO;    break;
-    default:              xbmc_lvl = LOGDEBUG;   break;
-  }
-  if (xbmc_lvl >= 0) {
-    CLog::Log(xbmc_lvl, "%s", msg);
+    case CMYTH_DBG_NONE:
+      break;
+    case CMYTH_DBG_ERROR:
+      LOG4CPLUS_ERROR(logger, msg);
+      break;
+    case CMYTH_DBG_WARN:
+      LOG4CPLUS_WARN(logger, msg);
+      break;
+    case CMYTH_DBG_INFO:
+      LOG4CPLUS_INFO(logger, msg);
+      break;
+    default:
+      LOG4CPLUS_DEBUG(logger, msg);
+      break;
   }
 }

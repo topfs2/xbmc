@@ -47,6 +47,7 @@
 #include "utils/log.h"
 
 #include "AddonUtils.h"
+#include <typeinfo>
 
 namespace XBMCAddon
 {

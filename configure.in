@@ -1242,6 +1242,8 @@ XB_FIND_SONAME([MODPLUG],     [modplug])
 XB_FIND_SONAME([ASS],         [ass])
 XB_FIND_SONAME([MPEG2],       [mpeg2])
 
+AC_CHECK_LIB([log4cplus],  [main],, AC_MSG_ERROR($missing_library))
+
 # WebServer
 if test "$use_webserver" = "yes"; then
   AC_CHECK_LIB([microhttpd],  [main],, AC_MSG_ERROR($missing_library))
