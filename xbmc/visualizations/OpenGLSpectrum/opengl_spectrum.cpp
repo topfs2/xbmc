@@ -87,7 +87,7 @@ static std::string fragmentShader =
 static GLfloat heights[NUM_BANDS];
 static GLfloat scale;
 static float hSpeed;
-static CRenderProgramPtr shader;
+static CRenderProgram *shader;
 
 static bool initialized = false;
 
@@ -130,7 +130,7 @@ static void draw_bars(void)
   GLfloat x = -1.0f + padding;
   GLfloat y = 0.0f;
 
-  glColor3f(0.2, 1.0, 0.2);
+  glColor4f(0.2f, 1.0f, 0.2f, 1.0f);
   for (unsigned int i = 0; i < NUM_BANDS; i++) {
     draw_rectangle(x, y, 0.0f, x + xscale * 0.5, y + heights[i] + 0.05f, 0.0f);
     x += xscale;
@@ -163,7 +163,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     std::cout << "Using GLEW Version: " << glewGetString(GLEW_VERSION) << std::endl;
 
     if (!shader) {
-      shader = CRenderProgramPtr(new CRenderProgram(&vertexShader, &fragmentShader));
+      shader = new CRenderProgram(&vertexShader, &fragmentShader);
     }
 
     initialized = true;
@@ -200,6 +200,7 @@ extern "C" void Render()
 
 extern "C" void Start(int iChannels, int iSamplesPerSec, int iBitsPerSample, const char* szSongName)
 {
+  std::cout << "Start " << iChannels << " " << iSamplesPerSec << " " << iBitsPerSample << " " << szSongName << std::endl;
   for(unsigned int x = 0; x < NUM_BANDS; x++)
   {
     heights[x] = 0.0;
@@ -242,6 +243,7 @@ extern "C" void AudioData(const float* pAudioData, int iAudioDataLength, float *
 //-----------------------------------------------------------------------------
 extern "C" void GetInfo(VIS_INFO* pInfo)
 {
+  std::cout << "GetInfo" << std::endl;
   pInfo->bWantsFreq = false;
   pInfo->iSyncDelay = 0;
 }
@@ -252,6 +254,7 @@ extern "C" void GetInfo(VIS_INFO* pInfo)
 //-----------------------------------------------------------------------------
 extern "C" unsigned int GetSubModules(char ***names)
 {
+  std::cout << "GetSubModules" << std::endl;
   return 0; // this vis supports 0 sub modules
 }
 
@@ -260,6 +263,7 @@ extern "C" unsigned int GetSubModules(char ***names)
 //-----------------------------------------------------------------------------
 extern "C" bool OnAction(long flags, const void *param)
 {
+  std::cout << "OnAction " << flags << std::endl;
   bool ret = false;
   return ret;
 }
@@ -269,6 +273,7 @@ extern "C" bool OnAction(long flags, const void *param)
 //-----------------------------------------------------------------------------
 extern "C" unsigned int GetPresets(char ***presets)
 {
+  std::cout << "GetPresets" << std::endl;
   return 0;
 }
 
@@ -277,6 +282,7 @@ extern "C" unsigned int GetPresets(char ***presets)
 //-----------------------------------------------------------------------------
 extern "C" unsigned GetPreset()
 {
+  std::cout << "GetPresets index" << std::endl;
   return 0;
 }
 
@@ -285,6 +291,7 @@ extern "C" unsigned GetPreset()
 //-----------------------------------------------------------------------------
 extern "C" bool IsLocked()
 {
+  std::cout << "IsLocked" << std::endl;
   return false;
 }
 
@@ -294,6 +301,7 @@ extern "C" bool IsLocked()
 //-----------------------------------------------------------------------------
 extern "C" void ADDON_Stop()
 {
+  std::cout << "ADDON_Stop" << std::endl;
 }
 
 //-- Destroy ------------------------------------------------------------------
@@ -302,6 +310,11 @@ extern "C" void ADDON_Stop()
 //-----------------------------------------------------------------------------
 extern "C" void ADDON_Destroy()
 {
+  std::cout << "ADDON_Destroy" << std::endl;
+  if (shader) {
+    delete shader;
+    shader = NULL;
+  }
 }
 
 //-- HasSettings --------------------------------------------------------------
@@ -310,6 +323,7 @@ extern "C" void ADDON_Destroy()
 //-----------------------------------------------------------------------------
 extern "C" bool ADDON_HasSettings()
 {
+  std::cout << "ADDON_HasSettings" << std::endl;
   return false;
 }
 
@@ -319,6 +333,7 @@ extern "C" bool ADDON_HasSettings()
 //-----------------------------------------------------------------------------
 extern "C" ADDON_STATUS ADDON_GetStatus()
 {
+  std::cout << "ADDON_GetStatus" << std::endl;
   return ADDON_STATUS_OK;
 }
 
@@ -328,6 +343,7 @@ extern "C" ADDON_STATUS ADDON_GetStatus()
 //-----------------------------------------------------------------------------
 extern "C" unsigned int ADDON_GetSettings(ADDON_StructSetting ***sSet)
 {
+  std::cout << "ADDON_GetSettings" << std::endl;
   return 0;
 }
 
@@ -338,6 +354,7 @@ extern "C" unsigned int ADDON_GetSettings(ADDON_StructSetting ***sSet)
 
 extern "C" void ADDON_FreeSettings()
 {
+  std::cout << "ADDON_FreeSettings" << std::endl;
 }
 
 //-- SetSetting ---------------------------------------------------------------
@@ -346,9 +363,7 @@ extern "C" void ADDON_FreeSettings()
 //-----------------------------------------------------------------------------
 extern "C" ADDON_STATUS ADDON_SetSetting(const char *strSetting, const void* value)
 {
-  if (!strSetting || !value)
-    return ADDON_STATUS_UNKNOWN;
-
+  std::cout << "ADDON_SetSetting" << std::endl;
   return ADDON_STATUS_OK;
 }
 
