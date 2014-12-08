@@ -87,19 +87,6 @@ bool CVisualisation::Create(int x, int y, int w, int h, void *device)
 
   if (CAddonDll<DllVisualisation, Visualisation, VIS_PROPS>::Create() == ADDON_STATUS_OK)
   {
-    // Start the visualisation
-    std::string strFile = URIUtils::GetFileName(g_application.CurrentFile());
-    CLog::Log(LOGDEBUG, "Visualisation::Start()\n");
-    try
-    {
-      m_pStruct->Start(m_iChannels, m_iSamplesPerSec, m_iBitsPerSample, strFile.c_str());
-    }
-    catch (std::exception e)
-    {
-      HandleException(e, "m_pStruct->Start() (CVisualisation::Create)");
-      return false;
-    }
-
     GetPresets();
 
     if (GetSubModules())
@@ -251,6 +238,9 @@ void CVisualisation::OnInitialize(int iChannels, int iSamplesPerSec, int iBitsPe
   m_iChannels = iChannels;
   m_iSamplesPerSec = iSamplesPerSec;
   m_iBitsPerSample = iBitsPerSample;
+
+  std::string strFile = URIUtils::GetFileName(g_application.CurrentFile());
+  Start(iChannels, iSamplesPerSec, iBitsPerSample, strFile.c_str());
   UpdateTrack();
 
   CLog::Log(LOGDEBUG, "OnInitialize() done");
