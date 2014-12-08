@@ -174,6 +174,8 @@ waveform_enabled="== WAVEFORM enabled =="
 waveform_disabled="== WAVEFORM disabled =="
 spectrum_enabled="== SPECTRUM enabled =="
 spectrum_disabled="== SPECTRUM disabled =="
+spectrum2d_enabled="== 2D SPECTRUM enabled =="
+spectrum2d_disabled="== 2D SPECTRUM disabled =="
 goom_enabled="== GOOM enabled. =="
 goom_disabled="== GOOM disabled. =="
 alsa_disabled="== ALSA support disabled. =="
@@ -333,6 +335,12 @@ AC_ARG_ENABLE([spectrum],
   [enable Spectrum visualisation (default is yes)])],
   [use_spectrum=$enableval],
   [use_spectrum=yes])
+
+AC_ARG_ENABLE([spectrum2d],
+  [AS_HELP_STRING([--enable-spectrum2d],
+  [enable 2D Spectrum visualisation (default is yes)])],
+  [use_spectrum2d=$enableval],
+  [use_spectrum2d=yes])
 
 AC_ARG_ENABLE([goom],
   [AS_HELP_STRING([--enable-goom],
@@ -1440,6 +1448,15 @@ else
   DISABLE_SPECTRUM=1
 fi
 
+# 2D SPECTRUM
+if test "$use_spectrum2d" = "yes"; then
+  AC_MSG_NOTICE($spectrum2d_enabled)
+    DISABLE_SPECTRUM2D=0
+else
+  AC_MSG_NOTICE($spectrum2d_disabled)
+  DISABLE_SPECTRUM2D=1
+fi
+
 # GOOM
 if test "$host_vendor" = "apple" ; then
   AC_MSG_NOTICE($goom_disabled)
@@ -2155,6 +2172,12 @@ else
   final_message="$final_message\n  Spectrum:\tNo"
 fi
 
+if test "$use_spectrum2d" = "yes"; then
+  final_message="$final_message\n  2D Spectrum:\tYes"
+else
+  final_message="$final_message\n  2D Spectrum:\tNo"
+fi
+
 if test "$use_goom" = "yes"; then
   final_message="$final_message\n  GOOM:\t\tYes"
 else
@@ -2527,6 +2550,7 @@ OUTPUT_FILES="Makefile \
     xbmc/visualizations/XBMCProjectM/Makefile \
     xbmc/visualizations/Goom/Makefile \
     xbmc/visualizations/OpenGLSpectrum/Makefile \
+    xbmc/visualizations/Spectrum2D/Makefile \
     xbmc/visualizations/fishBMC/Makefile \
     xbmc/visualizations/WaveForm/Makefile \
     xbmc/windowing/Makefile \
@@ -2622,6 +2646,7 @@ AC_SUBST(SDL_DEFINES)
 AC_SUBST(BUILD_DVDCSS)
 AC_SUBST(DISABLE_WAVEFORM)
 AC_SUBST(DISABLE_SPECTRUM)
+AC_SUBST(DISABLE_2DSPECTRUM)
 AC_SUBST(DISABLE_GOOM)
 AC_SUBST(DISABLE_RSXS)
 AC_SUBST(DISABLE_FISHBMC)

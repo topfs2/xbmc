@@ -204,6 +204,12 @@ else
   INSTALL_FILTER+= .*visualization\.glspectrum.*
 endif
 
+ifneq (@DISABLE_SPECTRUM2D@,1)
+  VIS_DIRS+= xbmc/visualizations/Spectrum2D
+else
+  INSTALL_FILTER+= .*visualization\.spectrum2d.*
+endif
+
 ifneq (@DISABLE_WAVEFORM@,1)
   VIS_DIRS+= xbmc/visualizations/WaveForm
 else
