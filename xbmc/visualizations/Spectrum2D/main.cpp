@@ -19,9 +19,25 @@
  */
 
 #include "addons/include/xbmc_vis_dll.h"
+#include "Renderer.h"
 #include <iostream>
 
 using namespace std;
+
+void LogProps(VIS_PROPS *props)
+{
+  cout << "Props = {" << endl
+       << "\t x: " << props->x << endl
+       << "\t y: " << props->y << endl
+       << "\t width: " << props->width << endl
+       << "\t height: " << props->height << endl
+       << "\t pixelRatio: " << props->pixelRatio << endl
+       << "\t name: " << props->name << endl
+       << "\t presets: " << props->presets << endl
+       << "\t profile: " << props->profile << endl
+//       << "\t submodule: " << props->submodule << endl // Causes problems? Is it initialized?
+       << "}" << endl;
+}
 
 void LogTrack(VisTrack *track)
 {
@@ -51,11 +67,21 @@ void LogActionString(const char *message, const char *param)
   cout << "Action " << message << " " << param << endl;
 }
 
+//-- Globals
+
+bool initialized = false;
+ICamera *camera = NULL;
+IRenderer *renderer = NULL;
+Scene *scene = NULL;
+
 //-- Render -------------------------------------------------------------------
 // Called once per frame. Do all rendering here.
 //-----------------------------------------------------------------------------
 extern "C" void Render()
 {
+  if (initialized) {
+    renderer->render(scene, camera);
+  }
 }
 
 extern "C" void Start(int iChannels, int iSamplesPerSec, int iBitsPerSample, const char* szSongName)
@@ -163,6 +189,18 @@ extern "C" bool IsLocked()
 ADDON_STATUS ADDON_Create(void* hdl, void* props)
 {
   cout << "ADDON_Create" << std::endl;
+  VIS_PROPS *p = (VIS_PROPS *)props;
+
+  LogProps(p);
+
+  if (!initialized)
+  {
+    renderer = new GLRenderer();
+    camera = new OrthographicCamera(p->width, p->height, 0.1f, 1000.0f);
+    scene = new Scene();
+
+    initialized = true;
+  }
 
   if (!props)
     return ADDON_STATUS_UNKNOWN;
@@ -186,6 +224,23 @@ extern "C" void ADDON_Stop()
 extern "C" void ADDON_Destroy()
 {
   cout << "ADDON_Destroy" << std::endl;
+
+  if (renderer) {
+    delete renderer;
+    renderer = NULL;
+  }
+
+  if (camera) {
+    delete camera;
+    camera = NULL;
+  }
+
+  if (scene) {
+    delete scene;
+    scene = NULL;
+  }
+
+  initialized = false;
 }
 
 //-- HasSettings --------------------------------------------------------------
