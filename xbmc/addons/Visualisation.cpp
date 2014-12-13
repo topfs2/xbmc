@@ -203,6 +203,7 @@ bool CVisualisation::OnAction(VIS_ACTION action, void *param)
     {
       // if this is a VIS_ACTION_UPDATE_TRACK action, copy relevant
       // tags from CMusicInfoTag to VisTag
+      CSingleLock lock (m_critSection);
       if ( action == VIS_ACTION_UPDATE_TRACK && param )
       {
         const CMusicInfoTag* tag = (const CMusicInfoTag*)param;
