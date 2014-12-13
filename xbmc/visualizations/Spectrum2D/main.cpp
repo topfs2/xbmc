@@ -21,12 +21,16 @@
 #include "addons/include/xbmc_vis_dll.h"
 #include "RenderProgram.h"
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <fstream>
 #include <streambuf>
 #include <SDL/SDL.h> // Grrr
 #include <math.h>
 #include <complex.h>
+#include <limits.h>
+
+#include "kiss_fft.h"
 
 using namespace std;
 
@@ -73,32 +77,38 @@ void LogActionString(const char *message, const char *param)
   cout << "Action " << message << " " << param << endl;
 }
 
-double PI = atan2(1, 1) * 4;
-typedef double complex cplx;
- 
-void _fft(cplx buf[], cplx out[], int n, int step)
-{
-	if (step < n) {
-		_fft(out, buf, n, step * 2);
-		_fft(out + step, buf + step, n, step * 2);
- 
-		for (int i = 0; i < n; i += 2 * step) {
-			cplx t = cexp(-I * PI * i / n) * out[i + step];
-			buf[i / 2]     = out[i] + t;
-			buf[(i + n)/2] = out[i] - t;
-		}
-	}
-}
- 
-void fft(cplx buf[], int n)
-{
-	cplx out[n];
-	for (int i = 0; i < n; i++) out[i] = buf[i];
- 
-	_fft(buf, out, n, 1);
+void blackmanWindow(float *buffer, size_t length) {
+  double alpha = 0.16;
+  double a0 = 0.5 * (1.0 - alpha);
+  double a1 = 0.5;
+  double a2 = 0.5 * alpha;
+
+  for (size_t i = 0; i < length; i++) {
+    float x = (float)i / (float)length;
+    buffer[i] *= a0 - a1 * cos(2.0 * M_PI * x) + a2 * cos(4.0 * M_PI * x);
+  }
 }
 
-#define AUDIO_BUFFER 512
+void smoothingOverTime(float *outputBuffer, float *lastOutputBuffer, kiss_fft_cpx *inputBuffer, size_t length, float smoothingTimeConstant, unsigned int fftSize) {
+  for (size_t i = 0; i < length; i++) {
+    kiss_fft_cpx c = inputBuffer[i];
+    float magnitude = sqrt(c.r * c.r + c.i * c.i) / (float)fftSize;
+    outputBuffer[i] = smoothingTimeConstant * lastOutputBuffer[i] + (1.0 - smoothingTimeConstant) * magnitude;
+  }
+}
+
+float linearToDecibels(float linear)
+{
+    if (!linear)
+      return -1000;
+    return 20 * log10f(linear);
+}
+
+#define SMOOTHING_TIME_CONSTANT (0.8)
+#define MIN_DECIBELS (-100.0)
+#define MAX_DECIBELS (-30.0)
+
+#define AUDIO_BUFFER (256)
 #define NUM_BANDS (AUDIO_BUFFER / 2)
 
 GLuint createTexture(GLint format, unsigned int w, unsigned int h, const GLvoid * data)
@@ -106,6 +116,9 @@ GLuint createTexture(GLint format, unsigned int w, unsigned int h, const GLvoid 
   GLuint texture = 0;
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D,  GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D,  GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -130,27 +143,37 @@ std::string header_fs =
 //-- Globals
 std::string sample_vs = "void main() { gl_Position = ftransform(); }";
 std::string sample_fs = header_fs + "\n"
-"#define WAVES 8.0\n"
-"void main(void) {\n"
-"	vec2 uv = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;\n"
-"	float time = iGlobalTime * 1.0;\n"
-"	vec3 color = vec3(0.0);\n"
-"	for (float i=0.0; i<WAVES + 1.0; i++) {\n"
-"		float freq = texture2D(iChannel0, vec2(i / WAVES, 0.0)).x * 7.0;\n"
-"		vec2 p = vec2(uv);\n"
-"		p.x += i * 0.04 + freq * 0.03;\n"
-"		p.y += sin(p.x * 10.0 + time) * cos(p.x * 2.0) * freq * 0.2 * ((i + 1.0) / WAVES);\n"
-"		float intensity = abs(0.01 / p.y) * clamp(freq, 0.35, 2.0);\n"
-"		color += vec3(1.0 * intensity * (i / 5.0), 0.5 * intensity, 1.75 * intensity) * (3.0 / WAVES);\n"
-"	}\n"
-"	gl_FragColor = vec4(color, 1.0);\n"
-"}";
+"#ifdef GL_ES  \n"
+"precision highp float;  \n"
+"#endif  \n"
+"float bump(float x) {\n"
+"	return abs(x) > 1.0 ? 0.0 : 1.0 - x * x;\n"
+"}\n"
+"void main(void)\n"
+"{\n"
+"	vec2 uv = (gl_FragCoord.xy / iResolution.xy);\n"
+"	float c = 3.0;\n"
+"	vec3 color = vec3(1.0);\n"
+"	color.x = bump(c * (uv.x - 0.75));\n"
+"	color.y = bump(c * (uv.x - 0.5));\n"
+"	color.z = bump(c * (uv.x - 0.25));\n"
+"	float line = abs(0.01 / abs(0.5-uv.y) );\n"
+"	uv.y = abs( uv.y - 0.5 );\n"
+"	vec4 soundWave =  texture2D( iChannel0, vec2(abs(0.5-uv.x)+0.005, uv.y) );\n"
+"	color *= line * (1.0 - 2.0 * abs( 0.5 - uv.xxx ) + pow( soundWave.y, 10.0 ) * 30.0 );\n"
+"	gl_FragColor = vec4(color, 0.0);\n"
+"}\n";
 
 bool initialized = false;
 CRenderProgram *shader = NULL;
 GLuint iChannel0 = 0;
+bool needsUpload = true;
 
-char *audio_data = NULL;
+kiss_fft_cfg cfg;
+
+float *pcm = NULL;
+float *magnitude_buffer = NULL;
+GLubyte *audio_data = NULL;
 int samplesPerSec = 0;
 
 //-- Render -------------------------------------------------------------------
@@ -171,23 +194,25 @@ extern "C" void Render()
     glDepthFunc(GL_LESS);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-
     glClear(GL_DEPTH_BUFFER_BIT);
     glPushMatrix();
 
     glBindTexture(GL_TEXTURE_2D, iChannel0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, NUM_BANDS, 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, audio_data);
+    if (needsUpload) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, NUM_BANDS, 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, audio_data);
+      needsUpload = false;
+    }
 
     shader->Bind();
     shader->uniform1f("iGlobalTime", (float)SDL_GetTicks() / 1000.0f);
     shader->uniform1f("iSampleRate", samplesPerSec);
 
-    glBegin(GL_QUADS);                      // Draw A Quad
-        glVertex3f(-1.0f, 1.0f, 0.0f);              // Top Left
-        glVertex3f( 1.0f, 1.0f, 0.0f);              // Top Right
-        glVertex3f( 1.0f,-1.0f, 0.0f);              // Bottom Right
-        glVertex3f(-1.0f,-1.0f, 0.0f);              // Bottom Left
-    glEnd();                            // Done Drawing The Quad
+    glBegin(GL_QUADS);
+      glVertex3f(-1.0f, 1.0f, 0.0f);
+      glVertex3f( 1.0f, 1.0f, 0.0f);
+      glVertex3f( 1.0f,-1.0f, 0.0f);
+      glVertex3f(-1.0f,-1.0f, 0.0f);
+    glEnd();
 
     CRenderProgram::revertToFixedPipeline();
 
@@ -208,22 +233,43 @@ extern "C" void Start(int iChannels, int iSamplesPerSec, int iBitsPerSample, con
 
 extern "C" void AudioData(const float* pAudioData, int iAudioDataLength, float *pFreqData, int iFreqDataLength)
 {
-  cplx buf[iAudioDataLength];
+  memset(pcm, 0, AUDIO_BUFFER * sizeof(float));
 
-  for (unsigned int i = 0; i < iAudioDataLength; i++) {
-    double multiplier = 0.5 * (1.0 - cos(2 * PI * i / (iAudioDataLength - 1)));
-    buf[i] = pAudioData[i] * multiplier;
+  for (unsigned int i = 0; i < iAudioDataLength; i += 2) {
+    if ((i / 2) < AUDIO_BUFFER) {
+      pcm[i / 2] = (pAudioData[i] + pAudioData[i + 1]) * 0.5f;
+    }
   }
 
-  fft(buf, iAudioDataLength);
+  blackmanWindow(pcm, AUDIO_BUFFER);
 
-  float fInvMinData = 1.0f / (sqrt(iAudioDataLength) * 1.0);
-
-  for(unsigned int i = 0; i < NUM_BANDS; i++)
-  {
-    double value = cabs(buf[i]) * fInvMinData * 256.0;
-    audio_data[i] = (char)value;
+  kiss_fft_cpx in[AUDIO_BUFFER], out[AUDIO_BUFFER];
+  for (unsigned int i = 0; i < AUDIO_BUFFER; i++) {
+    in[i].r = pcm[i];
+    in[i].i = 0;
   }
+
+  kiss_fft(cfg, in, out);
+
+  out[0].i = 0;
+
+  smoothingOverTime(magnitude_buffer, magnitude_buffer, out, NUM_BANDS, SMOOTHING_TIME_CONSTANT, AUDIO_BUFFER);
+
+  const double rangeScaleFactor = MAX_DECIBELS == MIN_DECIBELS ? 1 : (1.0 / (MAX_DECIBELS - MIN_DECIBELS));
+  for (unsigned int i = 0; i < NUM_BANDS; i++) {
+    float linearValue = magnitude_buffer[i];
+    double dbMag = !linearValue ? MIN_DECIBELS : linearToDecibels(linearValue);
+    double scaledValue = UCHAR_MAX * (dbMag - MIN_DECIBELS) * rangeScaleFactor;
+
+    audio_data[i] = std::max(std::min((int)scaledValue, UCHAR_MAX), 0);
+  }
+
+  for (unsigned int i = 0; i < NUM_BANDS; i++) {
+    float v = (pcm[i] + 1.0f) * 128.0f;
+    audio_data[i + NUM_BANDS] = std::max(std::min((int)v, UCHAR_MAX), 0);
+  }
+
+  needsUpload = true;
 }
 
 //-- GetInfo ------------------------------------------------------------------
@@ -325,8 +371,11 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   LogProps(p);
 
-  audio_data = new char[NUM_BANDS * 2];
-  memset(audio_data, 0, NUM_BANDS * 2);
+  audio_data = new GLubyte[AUDIO_BUFFER]();
+  magnitude_buffer = new float[NUM_BANDS]();
+  pcm = new float[AUDIO_BUFFER]();
+
+  cfg = kiss_fft_alloc(NUM_BANDS, 0, NULL, NULL);
 
   if (GLEW_OK != glewInit()) {
 	  std::cout << "Failed to initialize glew";
@@ -383,6 +432,21 @@ extern "C" void ADDON_Destroy()
   if (audio_data) {
     delete [] audio_data;
     audio_data = NULL;
+  }
+
+  if (magnitude_buffer) {
+    delete [] magnitude_buffer;
+    magnitude_buffer = NULL;
+  }
+
+  if (pcm) {
+    delete [] pcm;
+    pcm = NULL;
+  }
+
+  if (cfg) {
+    free(cfg);
+    cfg = 0;
   }
 
   initialized = false;
