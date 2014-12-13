@@ -85,6 +85,7 @@ bool CVisualisation::Create(int x, int y, int w, int h, void *device)
   m_pInfo->profile = strdup(CSpecialProtocol::TranslatePath(Profile()).c_str());
   m_pInfo->submodule = NULL;
 
+  CSingleLock lock (m_critSection);
   if (CAddonDll<DllVisualisation, Visualisation, VIS_PROPS>::Create() == ADDON_STATUS_OK)
   {
     GetPresets();
@@ -111,6 +112,7 @@ void CVisualisation::Start(int iChannels, int iSamplesPerSec, int iBitsPerSample
   {
     try
     {
+      CSingleLock lock (m_critSection);
       m_pStruct->Start(iChannels, iSamplesPerSec, iBitsPerSample, strSongName.c_str());
     }
     catch (std::exception e)
@@ -131,6 +133,7 @@ void CVisualisation::AudioData(const float* pAudioData, int iAudioDataLength, fl
   {
     try
     {
+      CSingleLock lock (m_critSection);
       m_pStruct->AudioData(pAudioData, iAudioDataLength, pFreqData, iFreqDataLength);
     }
     catch (std::exception e)
@@ -148,6 +151,7 @@ void CVisualisation::Render()
   {
     try
     {
+      CSingleLock lock (m_critSection);
       m_pStruct->Render();
     }
     catch (std::exception e)
@@ -163,6 +167,7 @@ void CVisualisation::Stop()
   CAEFactory::UnregisterAudioCallback();
   if (Initialized())
   {
+    CSingleLock lock (m_critSection);
     CAddonDll<DllVisualisation, Visualisation, VIS_PROPS>::Stop();
   }
 }
@@ -173,6 +178,7 @@ void CVisualisation::GetInfo(VIS_INFO *info)
   {
     try
     {
+      CSingleLock lock (m_critSection);
       m_pStruct->GetInfo(info);
     }
     catch (std::exception e)
@@ -192,6 +198,7 @@ bool CVisualisation::OnAction(VIS_ACTION action, void *param)
   // returns true if vis handled the input
   try
   {
+    CSingleLock lock (m_critSection);
     if (action != VIS_ACTION_NONE && m_pStruct->OnAction)
     {
       // if this is a VIS_ACTION_UPDATE_TRACK action, copy relevant
@@ -363,6 +370,7 @@ bool CVisualisation::GetPresets()
   unsigned int entries = 0;
   try
   {
+    CSingleLock lock (m_critSection);
     entries = m_pStruct->GetPresets(&presets);
   }
   catch (std::exception e)
@@ -396,6 +404,7 @@ bool CVisualisation::GetSubModules()
   unsigned int entries = 0;
   try
   {
+    CSingleLock lock (m_critSection);
     entries = m_pStruct->GetSubModules(&modules);
   }
   catch (...)
@@ -430,6 +439,7 @@ bool CVisualisation::IsLocked()
     if (!m_pStruct)
       return false;
 
+    CSingleLock lock (m_critSection);
     return m_pStruct->IsLocked();
   }
   return false;
@@ -457,6 +467,7 @@ unsigned CVisualisation::GetPreset()
   unsigned index = 0;
   try
   {
+    CSingleLock lock (m_critSection);
     index = m_pStruct->GetPreset();
   }
   catch(...)

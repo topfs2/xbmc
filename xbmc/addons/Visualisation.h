@@ -107,5 +107,7 @@ namespace ADDON
 
     // track information
     std::string m_AlbumThumb;
+
+    CCriticalSection m_critSection;
   };
 }
