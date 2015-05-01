@@ -1,3 +1,5 @@
+// Taken from https://www.shadertoy.com/view/lds3zr
+
 
 //-----------------------------------------------------------------------------
 // Utils
@@ -110,11 +112,11 @@ float AO(vec3 p, vec3 n)
 //-----------------------------------------------------------------------------
 // Main Loop
 //-----------------------------------------------------------------------------
-void main()
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
 	vec4 color = vec4(0.0);
 	float bass = texture2D( iChannel0, vec2(20./256.,0.25) ).x*.75+texture2D( iChannel0, vec2(50./256.,0.25) ).x*.25;
-	vec2 v = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
+	vec2 v = -1.0 + 2.0 * fragCoord.xy / iResolution.xy;
 	v.x *= iResolution.x/iResolution.y;
 	
 	vec3 org = vec3(texture2D( iChannel0, vec2(1./256.,0.25) ).x*.2+1.,+0.3+bass*.05,t+5.);
@@ -136,6 +138,6 @@ void main()
 	color = mix(color,vec4(0.),vec4((min(distance(org,p)*.05,1.0))));
 	
 	
-	gl_FragColor = color;
+	fragColor = color;
 
 }

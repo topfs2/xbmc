@@ -1,3 +1,5 @@
+// Taken from https://www.shadertoy.com/view/Msl3Rr
+
 // Created by inigo quilez - iq/2013
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 
@@ -5,7 +7,7 @@
 
 //#define ANTIALIAS
 
-float hash( float n ) { return fract(sin(n)*43758.5453123); }
+float hash( float n ) { return fract(sin(n)*13.5453123); }
 
 float maxcomp( in vec3 v ) { return max( max( v.x, v.y ), v.z ); }
 
@@ -232,7 +234,45 @@ vec3 doLighting( in vec3 col, in float ks,
     return col;
 }
 
-void main( void )
+mat3 setLookAt( in vec3 ro, in vec3 ta, float cr )
+{
+	vec3  cw = normalize(ta-ro);
+	vec3  cp = vec3(sin(cr), cos(cr),0.0);
+	vec3  cu = normalize( cross(cw,cp) );
+	vec3  cv = normalize( cross(cu,cw) );
+    return mat3( cu, cv, cw );
+}
+
+vec3 render( in vec3 ro, in vec3 rd )
+{
+    vec3 col = vec3( 0.0 );
+
+    vec2 tminmax = vec2(0.0, 40.0 );
+
+    tminmax = boundingVlume( tminmax, ro, rd );
+
+    // raytrace
+    vec3 res = trace( ro, rd, tminmax.x, tminmax.y );
+    if( res.y > -0.5 )
+    {
+        float t = res.x;
+        vec3 pos = ro + t*rd;
+        vec3 nor = calcNormal( pos, t );
+
+        // material	
+        col = 0.5 + 0.5*cos( 6.2831*res.y + vec3(0.0, 0.4, 0.8) );
+        vec3 ff = texcube( iChannel1, 0.1*vec3(pos.x,4.0*res.z-pos.y,pos.z), nor ).xyz;
+        col *= ff.x;
+
+        // lighting
+        col = doLighting( col, ff.x, pos, nor, rd );
+        col *= 1.0 - smoothstep( 20.0, 40.0, t );
+    }
+    return col;
+}
+
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
 	freqs[0] = texture2D( iChannel0, vec2( 0.01, 0.25 ) ).x;
 	freqs[1] = texture2D( iChannel0, vec2( 0.07, 0.25 ) ).x;
@@ -250,7 +290,7 @@ void main( void )
     #else
         vec2 off = vec2(0.0);
     #endif        
-        vec2 xy = (-iResolution.xy+2.0*(gl_FragCoord.xy+off)) / iResolution.y;
+        vec2 xy = (-iResolution.xy+2.0*(fragCoord.xy+off)) / iResolution.y;
 
         // camera	
         vec3 ro = vec3( 8.5*cos(0.2+.33*time), 5.0+2.0*cos(0.1*time), 8.5*sin(0.1+0.37*time) );
@@ -258,36 +298,11 @@ void main( void )
         float roll = 0.2*sin(0.1*time);
 
         // camera tx
-        vec3 cw = normalize(ta-ro);
-        vec3 cp = vec3(sin(roll), cos(roll),0.0);
-        vec3 cu = normalize(cross(cw,cp));
-        vec3 cv = normalize(cross(cu,cw));
-        vec3 rd = normalize( xy.x*cu + xy.y*cv + 1.75*cw );
+        mat3 ca = setLookAt( ro, ta, roll );
+        vec3 rd = normalize( ca * vec3(xy.xy,1.75) );
         
-        vec3 col = vec3( 0.0 );
-
-        vec2 tminmax = vec2(0.0, 40.0 );
-
-        tminmax = boundingVlume( tminmax, ro, rd );
-
-        // raytrace
-        vec3 res = trace( ro, rd, tminmax.x, tminmax.y );
-        if( res.y > -0.5 )
-        {
-            float t = res.x;
-            vec3 pos = ro + t*rd;
-            vec3 nor = calcNormal( pos, t );
-            
-            // material	
-            col = 0.5 + 0.5*cos( 6.2831*res.y + vec3(0.0, 0.4, 0.8) );
-            vec3 ff = texcube( iChannel1, 0.1*vec3(pos.x,4.0*res.z-pos.y,pos.z), nor ).xyz;
-            col *= ff.x;
-
-            // lighting
-           col = doLighting( col, ff.x, pos, nor, rd );
-           col *= 1.0 - smoothstep( 20.0, 40.0, t );
-        }
-
+        vec3 col = render( ro, rd );
+        
         tot += pow( col, vec3(0.4545) );
     #ifdef ANTIALIAS
     }
@@ -295,8 +310,26 @@ void main( void )
     #endif    
     
     // vigneting
-	vec2 q = gl_FragCoord.xy/iResolution.xy;
+	vec2 q = fragCoord.xy/iResolution.xy;
     tot *= 0.2 + 0.8*pow( 16.0*q.x*q.y*(1.0-q.x)*(1.0-q.y), 0.1 );
 
-    gl_FragColor=vec4( tot, 1.0 );
+    fragColor=vec4( tot, 1.0 );
+
+
+
+
+}
+
+
+
+
+void mainVR( out vec4 fragColor, in vec2 fragCoord, in vec3 fragRayOri, in vec3 fragRayDir )
+{
+	freqs[0] = texture2D( iChannel0, vec2( 0.01, 0.25 ) ).x;
+	freqs[1] = texture2D( iChannel0, vec2( 0.07, 0.25 ) ).x;
+	freqs[2] = texture2D( iChannel0, vec2( 0.15, 0.25 ) ).x;
+	freqs[3] = texture2D( iChannel0, vec2( 0.30, 0.25 ) ).x;
+
+    vec3 col = render( fragRayOri + vec3(0.0,2.0,0.0), fragRayDir );
+    fragColor = vec4( col, 1.0 );
 }

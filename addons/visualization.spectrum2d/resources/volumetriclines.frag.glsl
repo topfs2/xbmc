@@ -1,3 +1,5 @@
+//Taken from https://www.shadertoy.com/view/4slGz4
+
 // Created by inigo quilez - iq/2013
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 
@@ -80,9 +82,9 @@ vec3 castRay( vec3 ro, vec3 rd, float linesSpeed )
 
 
 
-void main( void )
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-	vec2 q = gl_FragCoord.xy/iResolution.xy;
+	vec2 q = fragCoord.xy/iResolution.xy;
     vec2 p = -1.0+2.0*q;
 	p.x *= iResolution.x/iResolution.y;
     vec2 mo = iMouse.xy/iResolution.xy;
@@ -147,5 +149,5 @@ float linesSpeed =  smoothstep( 22.7, 22.71, iChannelTime[0] );
 
     col *= 0.15+0.85*pow( 16.0*q.x*q.y*(1.0-q.x)*(1.0-q.y), 0.15 );
 
-    gl_FragColor=vec4( col, 1.0 );
+    fragColor=vec4( col, 1.0 );
 }

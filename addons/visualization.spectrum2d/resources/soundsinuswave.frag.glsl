@@ -2,8 +2,8 @@
 
 #define WAVES 8.0
 
-void main(void) {
-	vec2 uv = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
+	vec2 uv = -1.0 + 2.0 * fragCoord.xy / iResolution.xy;
 
 	float time = iGlobalTime * 1.0;
 	
@@ -20,5 +20,5 @@ void main(void) {
 		color += vec3(1.0 * intensity * (i / 5.0), 0.5 * intensity, 1.75 * intensity) * (3.0 / WAVES);
 	}
 
-	gl_FragColor = vec4(color, 1.0);
+	fragColor = vec4(color, 1.0);
 }

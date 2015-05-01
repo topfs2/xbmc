@@ -3,7 +3,7 @@
 const float Pi = 3.14159;
 float beat = 0.;
 
-void main(void)
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
 	float ct = iChannelTime[0];
 	if ((ct > 8.0 && ct < 33.5)
@@ -15,7 +15,7 @@ void main(void)
 	float ring = 20.0;
 	float radius = iResolution.x*1.0;
 	float gap = scale*.5;
-	vec2 pos = gl_FragCoord.xy - iResolution.xy*.5;
+	vec2 pos = fragCoord.xy - iResolution.xy*.5;
 	
 	float d = length(pos);
 	
@@ -31,5 +31,5 @@ void main(void)
 	d /= radius;
 	vec3 m = fract((d-1.0)*vec3(ring*-.5, -ring, ring*.25)*0.5);
 	
-	gl_FragColor = vec4(m*v, 1.0);
+	fragColor = vec4(m*v, 1.0);
 }

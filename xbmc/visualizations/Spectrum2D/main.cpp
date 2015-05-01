@@ -19,13 +19,13 @@
  */
 
 #include "addons/include/xbmc_vis_dll.h"
-#include "RenderProgram.h"
+#include <GL/glew.h>
 #include <iostream>
 #include <algorithm>
 #include <string>
 #include <fstream>
 #include <streambuf>
-#include <SDL/SDL.h> // Grrr
+#include <SDL2/SDL.h> // Grrr
 #include <math.h>
 #include <complex.h>
 #include <limits.h>
@@ -33,6 +33,51 @@
 #include "kiss_fft.h"
 
 using namespace std;
+
+string g_pathPresets;
+
+char *g_presets[] = {
+  "Audio Reaktive by choard1895",
+  "Beating Circles by Phoenix72",
+  "BPM by iq",
+  "Circle Wave by TekF",
+  "Colored Bars by novalis",
+  "Cubescape by iq",
+  "The Disco Tunnel by poljere",
+  "Fractal Land by Kali",
+  "Gameboy by iq",
+  "Polar Beats by sauj123",
+  "Revision 2015 Livecoding Round 1 by mu6k",
+  "Ribbons by XT95",
+  "Sound sinus wave by Eitraz",
+  "symmetrical sound visualiser thelinked",
+  "Twisted Rings by poljere",
+  "Demo - Volumetric Lines by iq",
+  "Waves Remix by ADOB"
+};
+
+char *g_filePresets[] = {
+  "audioreaktive.frag.glsl",
+  "beatingcircles.frag.glsl",
+  "bpm.frag.glsl",
+  "circlewave.frag.glsl",
+  "coloredbars.frag.glsl",
+  "cubescape.frag.glsl",
+  "discotunnel.frag.glsl",
+  "fractalland.frag.glsl",
+  "gameboy.frag.glsl",
+  "polarbeats.frag.glsl",
+  "revision2015.frag.glsl",
+  "ribbons.frag.glsl",
+  "soundsinuswave.frag.glsl",
+  "symmetricalsound.frag.glsl",
+  "twistedrings.frag.glsl",
+  "volumetriclines.frag.glsl",
+  "wavesremix.frag.glsl"
+};
+
+int g_numberPresets = 17;
+int g_currentPreset = 0;
 
 void LogProps(VIS_PROPS *props)
 {
@@ -76,20 +121,6 @@ void LogActionString(const char *message, const char *param)
 {
   cout << "Action " << message << " " << param << endl;
 }
-
-/*
-void blackmanWindow(float *buffer, size_t length) {
-  double alpha = 0.16;
-  double a0 = 0.5 * (1.0 - alpha);
-  double a1 = 0.5;
-  double a2 = 0.5 * alpha;
-
-  for (size_t i = 0; i < length; i++) {
-    float x = (float)i / (float)length;
-    buffer[i] *= a0 - a1 * cos(2.0 * M_PI * x) + a2 * cos(4.0 * M_PI * x);
-  }
-}
-*/
 
 float blackmanWindow(float in, size_t i, size_t length) {
   double alpha = 0.16;
@@ -139,7 +170,123 @@ GLuint createTexture(GLint format, unsigned int w, unsigned int h, const GLvoid 
   return texture;
 }
 
+GLuint compileShader(GLenum shaderType, const char *shader)
+{
+  GLuint s = glCreateShader(shaderType);
+  if (s == 0)
+  {
+    cerr << "Failed to create shader from\n====" << endl;
+    cerr << shader << endl;
+    cerr << "===" << endl;
+
+    return 0;
+  }
+
+  glShaderSource(s, 1, &shader, NULL);
+  glCompileShader(s);
+
+  GLint param;
+  glGetShaderiv(s, GL_COMPILE_STATUS, &param);
+  if (param != GL_TRUE)
+  {
+    cerr << "Failed to compile shader source\n====" << endl;
+    cerr << shader << endl;
+    cerr << "===" << endl;
+
+    int infologLength = 0;
+    char *infoLog;
+
+    glGetShaderiv(s, GL_INFO_LOG_LENGTH, &infologLength);
+
+    if (infologLength > 0)
+    {
+      infoLog = new char[infologLength];
+      glGetShaderInfoLog(s, infologLength, NULL, infoLog);
+	    cout << "<log>" << endl << infoLog << endl << "</log>" << endl;
+      delete [] infoLog;
+    }
+
+    glDeleteShader(s);
+
+    return 0;
+  }
+
+  return s;
+}
+
+GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShader)
+{
+  GLuint program = glCreateProgram();
+  if (program == 0) {
+    cerr << "Failed to create program" << endl;
+    return 0;
+  }
+
+  GLuint vs = compileShader(GL_VERTEX_SHADER, vertexShader);
+  GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+  if (vs && fs)
+  {
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+
+    GLint param;
+    glGetProgramiv(program, GL_LINK_STATUS, &param);
+    if (param != GL_TRUE)
+    {
+      cerr << "Failed to link shader program " << endl;
+
+      int infologLength = 0;
+      char *infoLog;
+
+      glGetShaderiv(program, GL_INFO_LOG_LENGTH, &infologLength);
+
+      if (infologLength > 0)
+      {
+        infoLog = new char[infologLength];
+        glGetProgramInfoLog(program, infologLength, NULL, infoLog);
+	      cout << "<log>" << endl << infoLog << endl << "</log>" << endl;
+        delete [] infoLog;
+      }
+
+      GLchar errorLog[1024] = {0};
+      glGetProgramInfoLog(program, 1024, NULL, errorLog);
+
+      cout << "<vertexShader>" << endl << vertexShader << endl << "</vertexShader>" << endl;
+      cout << "<fragmentShader>" << endl << fragmentShader << endl << "</fragmentShader>" << endl;
+
+      glDetachShader(program, vs);
+      glDeleteShader(vs);
+
+      glDetachShader(program, fs);
+      glDeleteShader(fs);
+
+      glDeleteProgram(program);
+      return 0;
+    }
+  }
+  else
+  {
+  	glDeleteProgram(program);
+  }
+
+  glUseProgram(0);
+
+  if (vs)
+	glDeleteShader(vs);
+
+  if (fs)
+    glDeleteShader(fs);
+
+  return program;
+}
+
 std::string header_fs =
+"#ifdef GL_ES\n"
+"precision highp float;\n"
+"#endif\n"
+"#extension GL_OES_standard_derivatives : enable\n"
 "uniform vec3      iResolution;\n"
 "uniform float     iGlobalTime;\n"
 "uniform float     iChannelTime[4];\n"
@@ -151,6 +298,15 @@ std::string header_fs =
 "uniform sampler2D iChannel1;\n"
 "uniform sampler2D iChannel2;\n"
 "uniform sampler2D iChannel3;\n";
+
+std::string footer_fs =
+"void main(void)\n"
+"{\n"
+"  vec4 color = vec4(0.0, 0.0, 0.0, 1.0);\n"
+"  mainImage(color, gl_FragCoord.xy);\n"
+"  color.w = 1.0;\n"
+"  gl_FragColor = color;\n"
+"}\n";
 
 //-- Globals
 std::string sample_vs = "void main() { gl_Position = ftransform(); }";
@@ -177,7 +333,21 @@ std::string sample_fs = header_fs + "\n"
 "}\n";
 
 bool initialized = false;
-CRenderProgram *shader = NULL;
+
+GLuint shader = 0;
+
+GLint iResolutionLoc        = 0;
+GLint iGlobalTimeLoc        = 0;
+GLint iChannelTimeLoc       = 0;
+GLint iMouseLoc             = 0;
+GLint iDateLoc              = 0;
+GLint iSampleRateLoc        = 0;
+GLint iChannelResolutionLoc = 0;
+GLint iChannel0Loc          = 0;
+GLint iChannel1Loc          = 0;
+GLint iChannel2Loc          = 0;
+GLint iChannel3Loc          = 0;
+
 GLuint iChannel0 = 0;
 bool needsUpload = true;
 
@@ -187,6 +357,53 @@ float *pcm = NULL;
 float *magnitude_buffer = NULL;
 GLubyte *audio_data = NULL;
 int samplesPerSec = 0;
+int width = 0;
+int height = 0;
+
+GLuint createShader(const string &file)
+{
+  std::ostringstream ss;
+  ss << g_pathPresets << "/resources/" << file;
+  std::string fullPath = ss.str();
+
+  cout << "Creating shader from " << fullPath << endl;
+
+  std::ifstream t(fullPath);
+  std::string str((std::istreambuf_iterator<char>(t)),
+                   std::istreambuf_iterator<char>());
+
+  sample_fs = header_fs + "\n" + str + "\n" + footer_fs;
+
+  shader = compileAndLinkProgram(sample_vs.c_str(), sample_fs.c_str());
+  return shader;
+}
+
+void loadPreset(int number)
+{
+  if (number >= 0 && number < g_numberPresets)
+  {
+    g_currentPreset = number;
+
+    if (shader != 0) {
+      glDeleteProgram(shader);
+      shader = 0;
+    }
+
+    shader = createShader(g_filePresets[g_currentPreset]);
+
+    iResolutionLoc        = glGetUniformLocation(shader, "iResolution");
+    iGlobalTimeLoc        = glGetUniformLocation(shader, "iGlobalTime");
+    iChannelTimeLoc       = glGetUniformLocation(shader, "iChannelTime");
+    iMouseLoc             = glGetUniformLocation(shader, "iMouse");
+    iDateLoc              = glGetUniformLocation(shader, "iDate");
+    iSampleRateLoc        = glGetUniformLocation(shader, "iSampleRate");
+    iChannelResolutionLoc = glGetUniformLocation(shader, "iChannelResolution");
+    iChannel0Loc          = glGetUniformLocation(shader, "iChannel0");
+    iChannel1Loc          = glGetUniformLocation(shader, "iChannel1");
+    iChannel2Loc          = glGetUniformLocation(shader, "iChannel2");
+    iChannel3Loc          = glGetUniformLocation(shader, "iChannel3");
+  }
+}
 
 //-- Render -------------------------------------------------------------------
 // Called once per frame. Do all rendering here.
@@ -215,9 +432,15 @@ extern "C" void Render()
       needsUpload = false;
     }
 
-    shader->Bind();
-    shader->uniform1f("iGlobalTime", (float)SDL_GetTicks() / 1000.0f);
-    shader->uniform1f("iSampleRate", samplesPerSec);
+    float time = (float)SDL_GetTicks() / 1000.0f;
+    GLfloat tv[] = { time, time, time, time };
+
+    glUseProgram(shader);
+    glUniform3f(iResolutionLoc, width, height, 0.0f);
+    glUniform1f(iChannel0Loc, iChannel0);
+    glUniform1f(iGlobalTimeLoc, time);
+    glUniform1f(iSampleRateLoc, samplesPerSec);
+    glUniform1fv(iChannelTimeLoc, 4, tv);
 
     glBegin(GL_QUADS);
       glVertex3f(-1.0f, 1.0f, 0.0f);
@@ -226,7 +449,7 @@ extern "C" void Render()
       glVertex3f(-1.0f,-1.0f, 0.0f);
     glEnd();
 
-    CRenderProgram::revertToFixedPipeline();
+    glUseProgram(0);
 
     glPopMatrix();
 
@@ -278,7 +501,6 @@ extern "C" void AudioData(const float* pAudioData, int iAudioDataLength, float *
 
   kiss_fft_cpx in[AUDIO_BUFFER], out[AUDIO_BUFFER];
   for (unsigned int i = 0; i < AUDIO_BUFFER; i++) {
-//    in[i].r = pcm[i];
     in[i].r = blackmanWindow(pcm[i], i, AUDIO_BUFFER);
     in[i].i = 0;
   }
@@ -335,16 +557,26 @@ extern "C" bool OnAction(long flags, const void *param)
   {
     case VIS_ACTION_NEXT_PRESET:
       LogAction("VIS_ACTION_NEXT_PRESET");
-      break;
+      loadPreset((g_currentPreset + 1)  % g_numberPresets);
+      return true;
     case VIS_ACTION_PREV_PRESET:
       LogAction("VIS_ACTION_PREV_PRESET");
-      break;
+      loadPreset((g_currentPreset - 1)  % g_numberPresets);
+      return true;
     case VIS_ACTION_LOAD_PRESET:
       LogAction("VIS_ACTION_LOAD_PRESET"); // TODO param is int *
+      if (param)
+      {
+        loadPreset(*(int *)param);
+        return true;
+      }
+
       break;
     case VIS_ACTION_RANDOM_PRESET:
       LogAction("VIS_ACTION_RANDOM_PRESET");
-      break;
+      loadPreset((int)((std::rand() / (float)RAND_MAX) * g_numberPresets));
+      return true;
+
     case VIS_ACTION_LOCK_PRESET:
       LogAction("VIS_ACTION_LOCK_PRESET");
       break;
@@ -373,8 +605,10 @@ extern "C" bool OnAction(long flags, const void *param)
 //-----------------------------------------------------------------------------
 extern "C" unsigned int GetPresets(char ***presets)
 {
-  cout << "GetPresets" << std::endl;
-  return 0;
+  cout << "GetPresets " << g_numberPresets << std::endl;
+
+  *presets = g_presets;
+  return g_numberPresets;
 }
 
 //-- GetPreset ----------------------------------------------------------------
@@ -382,8 +616,7 @@ extern "C" unsigned int GetPresets(char ***presets)
 //-----------------------------------------------------------------------------
 extern "C" unsigned GetPreset()
 {
-  cout << "GetPreset" << std::endl;
-  return 0;
+  return g_currentPreset;
 }
 
 //-- IsLocked -----------------------------------------------------------------
@@ -405,6 +638,10 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   LogProps(p);
 
+  g_pathPresets = p->presets;
+  width = p->width;
+  height = p->height;
+
   audio_data = new GLubyte[AUDIO_BUFFER]();
   magnitude_buffer = new float[NUM_BANDS]();
   pcm = new float[AUDIO_BUFFER]();
@@ -415,23 +652,10 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 	  std::cout << "Failed to initialize glew";
   }
 
-  std::ifstream t("/home/topfs/workspaces/xbmc/xbmc/visualizations/Spectrum2D/sample.frag.glsl");
-  std::string str((std::istreambuf_iterator<char>(t)),
-                   std::istreambuf_iterator<char>());
-
-  sample_fs = header_fs + str;
-
   if (!initialized)
   {
-    cout << "VertexShader: " << endl << sample_vs << endl;
-    cout << "FragmentShader: " << endl << sample_fs << endl;
-
-    shader = new CRenderProgram(sample_vs, sample_fs);
-
     iChannel0 = createTexture(GL_LUMINANCE, NUM_BANDS, 2, audio_data);
-
-    shader->uniform3f("iResolution", p->width, p->height, 0.0f);
-    shader->uniform1f("iChannel0", 0);
+    loadPreset(g_currentPreset);
 
     initialized = true;
   }
@@ -439,7 +663,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   if (!props)
     return ADDON_STATUS_UNKNOWN;
 
-  return ADDON_STATUS_NEED_SETTINGS;
+  return ADDON_STATUS_NEED_SAVEDSETTINGS;
 }
 
 //-- Stop ---------------------------------------------------------------------
@@ -459,10 +683,8 @@ extern "C" void ADDON_Destroy()
 {
   cout << "ADDON_Destroy" << std::endl;
 
-  if (shader) {
-    delete shader;
-    shader = NULL;
-  }
+  if (shader)
+    glDeleteProgram(shader);
 
   if (iChannel0) {
     glDeleteTextures(1, &iChannel0);
@@ -499,7 +721,7 @@ extern "C" void ADDON_Destroy()
 extern "C" bool ADDON_HasSettings()
 {
   cout << "ADDON_HasSettings" << std::endl;
-  return false;
+  return true;
 }
 
 //-- GetStatus ---------------------------------------------------------------
@@ -542,12 +764,33 @@ extern "C" ADDON_STATUS ADDON_SetSetting(const char *strSetting, const void* val
   if (!strSetting || !value)
     return ADDON_STATUS_UNKNOWN;
 
-/*
-  if (strcmp(strSetting, "foo") == 0)
+  // TODO Someone _needs_ to fix this API in kodi, its terrible.
+  // a) Why not use GetSettings instead of hacking SetSettings like this?
+  // b) Why does it give index and not settings key?
+  // c) Seemingly random ###End which if you never write will while(true) the app
+  // d) Writes into const setting and value...
+  if (strcmp(strSetting, "###GetSavedSettings") == 0)
   {
+    cout << "WTF...." << endl;
+    if (strcmp((char*)value, "0") == 0)
+    {
+      strcpy((char*)strSetting, "lastpresetidx");
+      sprintf ((char*)value, "%i", (int)g_currentPreset);
+    }
+    if (strcmp((char*)value, "1") == 0)
+    {
+      strcpy((char*)strSetting, "###End");
+    }
+
     return ADDON_STATUS_OK;
   }
-*/
+
+  if (strcmp(strSetting, "lastpresetidx") == 0)
+  {
+    cout << "lastpresetidx = " << *((int *)value) << endl;
+    loadPreset(*(int *)value);
+    return ADDON_STATUS_OK;
+  }
 
   return ADDON_STATUS_UNKNOWN;
 }

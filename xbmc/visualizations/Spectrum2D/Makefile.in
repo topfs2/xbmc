@@ -5,7 +5,7 @@ SLIB = @abs_top_srcdir@/system/libvisSpectrum2D.so
 else
 SLIB = @abs_top_srcdir@/addons/visualization.spectrum2d/Spectrum2D.vis
 endif
-OBJS = main.o RenderProgram.o kiss_fft.o
+OBJS = main.o kiss_fft.o
 
 ifeq (@USE_OPENGLES@,1)
   ifeq ($(findstring osx,$(ARCH)), osx)

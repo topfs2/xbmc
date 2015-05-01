@@ -2,16 +2,16 @@
 
 const float tau = 6.28318530717958647692;
 
-void main(void)
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-	vec2 uv = (gl_FragCoord.xy - iResolution.xy*.5)/iResolution.x;
+	vec2 uv = (fragCoord.xy - iResolution.xy*.5)/iResolution.x;
 
 	uv = vec2(abs(atan(uv.x,uv.y)/(.5*tau)),length(uv));
 
 	// adjust frequency to look pretty	
 	uv.x *= 1.0/2.0;
 	
-  float seperation = 0.06;
+	float seperation = 0.06;
 
 	vec3 wave = vec3(0.0);
 	const int n = 60;
@@ -48,5 +48,5 @@ void main(void)
 	// vignetting
 	col *= smoothstep( 1.2, 0.0, uv.y );
 	
-	gl_FragColor = vec4(wave+col,1);
+	fragColor = vec4(wave+col,1);
 }
