@@ -1,9 +1,9 @@
 ARCH=@ARCH@
 CXXFLAGS=-fPIC
 ifeq (@USE_ANDROID@,1)
-SLIB = @abs_top_srcdir@/system/libvisSpectrum2D.so
+SLIB = @abs_top_srcdir@/system/libvisShadertoy.so
 else
-SLIB = @abs_top_srcdir@/addons/visualization.spectrum2d/Spectrum2D.vis
+SLIB = @abs_top_srcdir@/addons/visualization.shadertoy/Shadertoy.vis
 endif
 OBJS = main.o kiss_fft.o
 
