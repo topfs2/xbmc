@@ -59,7 +59,7 @@ char *g_presets[] = {
   "Simplicity Galaxy by CBS",
   "Sound Flower by iq",
   "Sound sinus wave by Eitraz",
-  "symmetrical sound visualiser thelinked",
+  "symmetrical sound visualiser by thelinked",
   "Twisted Rings by poljere",
   "Undulant Spectre by mafik",
   "Demo - Volumetric Lines by iq",
