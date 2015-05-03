@@ -31,56 +31,151 @@
 #include <limits.h>
 
 #include "kiss_fft.h"
+#include "lodepng.h"
 
 using namespace std;
 
 string g_pathPresets;
 
+// TODO Move presets into a struct
 char *g_presets[] = {
   "Audio Reaktive by choard1895",
+  "AudioVisual by Passion",
   "Beating Circles by Phoenix72",
   "BPM by iq",
   "Circle Wave by TekF",
+  "Circuits by Kali",
   "Colored Bars by novalis",
   "Cubescape by iq",
   "The Disco Tunnel by poljere",
   "Fractal Land by Kali",
   "Gameboy by iq",
+  "I/O by movAX13h",
+  "Kaleidoscope Visualizer by Qqwy",
+  "Nyancat by mu6k",
   "Polar Beats by sauj123",
   "Revision 2015 Livecoding Round 1 by mu6k",
   "Ribbons by XT95",
+  "Simplicity Galaxy by CBS",
+  "Sound Flower by iq",
   "Sound sinus wave by Eitraz",
   "symmetrical sound visualiser thelinked",
   "Twisted Rings by poljere",
+  "Undulant Spectre by mafik",
   "Demo - Volumetric Lines by iq",
   "Waves Remix by ADOB"
 };
 
 char *g_filePresets[] = {
   "audioreaktive.frag.glsl",
+  "audiovisual.frag.glsl",
   "beatingcircles.frag.glsl",
   "bpm.frag.glsl",
   "circlewave.frag.glsl",
+  "circuits.frag.glsl",
   "coloredbars.frag.glsl",
   "cubescape.frag.glsl",
   "discotunnel.frag.glsl",
   "fractalland.frag.glsl",
   "gameboy.frag.glsl",
+  "io.frag.glsl",
+  "kaleidoscopevisualizer.frag.glsl",
+  "nyancat.frag.glsl",
   "polarbeats.frag.glsl",
   "revision2015.frag.glsl",
   "ribbons.frag.glsl",
+  "simplicitygalaxy.frag.glsl",
+  "soundflower.frag.glsl",
   "soundsinuswave.frag.glsl",
   "symmetricalsound.frag.glsl",
   "twistedrings.frag.glsl",
+  "undulantspectre.frag.glsl",
   "volumetriclines.frag.glsl",
   "wavesremix.frag.glsl"
 };
 
-int g_numberPresets = 17;
+int g_channel1Presets[] {
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  7,
+  -1,
+  5,
+  2,
+  13,
+  -1,
+  -1,
+  15,
+  13,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1
+};
+
+int g_channel2Presets[] {
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  14 // I think
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1
+};
+
+int g_numberPresets = 25;
 int g_currentPreset = 0;
 
-void LogProps(VIS_PROPS *props)
-{
+char *g_fileTextures[] = {
+  "tex00.png",
+  "tex01.png",
+  "tex02.png",
+  "tex03.png",
+  "tex04.png",
+  "tex05.png",
+  "tex06.png",
+  "tex07.png",
+  "tex08.png",
+  "tex09.png",
+  "tex10.png",
+  "tex11.png",
+  "tex12.png",
+  "tex14.png",
+  "tex15.png",
+  "tex16.png"
+};
+
+int g_numberTextures = 17;
+GLint g_textures[17] = { };
+
+void LogProps(VIS_PROPS *props) {
   cout << "Props = {" << endl
        << "\t x: " << props->x << endl
        << "\t y: " << props->y << endl
@@ -94,8 +189,7 @@ void LogProps(VIS_PROPS *props)
        << "}" << endl;
 }
 
-void LogTrack(VisTrack *track)
-{
+void LogTrack(VisTrack *track) {
   cout << "Track = {" << endl
        << "\t title: " << track->title << endl
        << "\t artist: " << track->artist << endl
@@ -112,13 +206,11 @@ void LogTrack(VisTrack *track)
        << "}" << endl;
 }
 
-void LogAction(const char *message)
-{
+void LogAction(const char *message) {
   cout << "Action " << message << endl;
 }
 
-void LogActionString(const char *message, const char *param)
-{
+void LogActionString(const char *message, const char *param) {
   cout << "Action " << message << " " << param << endl;
 }
 
@@ -140,11 +232,10 @@ void smoothingOverTime(float *outputBuffer, float *lastOutputBuffer, kiss_fft_cp
   }
 }
 
-float linearToDecibels(float linear)
-{
-    if (!linear)
-      return -1000;
-    return 20 * log10f(linear);
+float linearToDecibels(float linear) {
+  if (!linear)
+    return -1000;
+  return 20 * log10f(linear);
 }
 
 #define SMOOTHING_TIME_CONSTANT (0.8)
@@ -154,8 +245,7 @@ float linearToDecibels(float linear)
 #define AUDIO_BUFFER (1024)
 #define NUM_BANDS (AUDIO_BUFFER / 2)
 
-GLuint createTexture(GLint format, unsigned int w, unsigned int h, const GLvoid * data)
-{
+GLuint createTexture(GLint format, unsigned int w, unsigned int h, const GLvoid * data) {
   GLuint texture = 0;
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
@@ -170,11 +260,49 @@ GLuint createTexture(GLint format, unsigned int w, unsigned int h, const GLvoid 
   return texture;
 }
 
-GLuint compileShader(GLenum shaderType, const char *shader)
-{
+GLuint createTexture(const GLvoid *data, GLint format, unsigned int w, unsigned int h, GLint internalFormat, GLint scaling, GLint repeat) {
+  GLuint texture = 0;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, scaling);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, scaling);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, repeat);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, format, GL_UNSIGNED_BYTE, data);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  return texture;
+}
+
+GLuint createTexture(const char *file, GLint internalFormat, GLint scaling, GLint repeat) {
+  std::ostringstream ss;
+  ss << g_pathPresets << "/resources/" << file;
+  std::string fullPath = ss.str();
+
+  cout << "creating texture " << fullPath << endl;
+
+
+  unsigned error;
+  unsigned char* image;
+  unsigned width, height;
+
+  error = lodepng_decode32_file(&image, &width, &height, fullPath.c_str());
+  if (error) {
+    printf("error %u: %s\n", error, lodepng_error_text(error));
+    return 0;
+  }
+
+  GLuint texture = createTexture(image, GL_RGBA, width, height, internalFormat, scaling, repeat);
+  free(image);
+  return texture;
+}
+
+GLuint compileShader(GLenum shaderType, const char *shader) {
   GLuint s = glCreateShader(shaderType);
-  if (s == 0)
-  {
+  if (s == 0) {
     cerr << "Failed to create shader from\n====" << endl;
     cerr << shader << endl;
     cerr << "===" << endl;
@@ -187,8 +315,7 @@ GLuint compileShader(GLenum shaderType, const char *shader)
 
   GLint param;
   glGetShaderiv(s, GL_COMPILE_STATUS, &param);
-  if (param != GL_TRUE)
-  {
+  if (param != GL_TRUE) {
     cerr << "Failed to compile shader source\n====" << endl;
     cerr << shader << endl;
     cerr << "===" << endl;
@@ -198,8 +325,7 @@ GLuint compileShader(GLenum shaderType, const char *shader)
 
     glGetShaderiv(s, GL_INFO_LOG_LENGTH, &infologLength);
 
-    if (infologLength > 0)
-    {
+    if (infologLength > 0) {
       infoLog = new char[infologLength];
       glGetShaderInfoLog(s, infologLength, NULL, infoLog);
 	    cout << "<log>" << endl << infoLog << endl << "</log>" << endl;
@@ -214,8 +340,7 @@ GLuint compileShader(GLenum shaderType, const char *shader)
   return s;
 }
 
-GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShader)
-{
+GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShader) {
   GLuint program = glCreateProgram();
   if (program == 0) {
     cerr << "Failed to create program" << endl;
@@ -225,16 +350,14 @@ GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShade
   GLuint vs = compileShader(GL_VERTEX_SHADER, vertexShader);
   GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
-  if (vs && fs)
-  {
+  if (vs && fs) {
     glAttachShader(program, vs);
     glAttachShader(program, fs);
     glLinkProgram(program);
 
     GLint param;
     glGetProgramiv(program, GL_LINK_STATUS, &param);
-    if (param != GL_TRUE)
-    {
+    if (param != GL_TRUE) {
       cerr << "Failed to link shader program " << endl;
 
       int infologLength = 0;
@@ -242,8 +365,7 @@ GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShade
 
       glGetShaderiv(program, GL_INFO_LOG_LENGTH, &infologLength);
 
-      if (infologLength > 0)
-      {
+      if (infologLength > 0) {
         infoLog = new char[infologLength];
         glGetProgramInfoLog(program, infologLength, NULL, infoLog);
 	      cout << "<log>" << endl << infoLog << endl << "</log>" << endl;
@@ -265,16 +387,14 @@ GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShade
       glDeleteProgram(program);
       return 0;
     }
-  }
-  else
-  {
+  } else {
   	glDeleteProgram(program);
   }
 
   glUseProgram(0);
 
   if (vs)
-	glDeleteShader(vs);
+    glDeleteShader(vs);
 
   if (fs)
     glDeleteShader(fs);
@@ -282,7 +402,9 @@ GLuint compileAndLinkProgram(const char *vertexShader, const char *fragmentShade
   return program;
 }
 
-std::string header_fs =
+std::string vsSource = "void main() { gl_Position = ftransform(); }";
+
+std::string fsHeader =
 "#ifdef GL_ES\n"
 "precision highp float;\n"
 "#endif\n"
@@ -299,37 +421,13 @@ std::string header_fs =
 "uniform sampler2D iChannel2;\n"
 "uniform sampler2D iChannel3;\n";
 
-std::string footer_fs =
+std::string fsFooter =
 "void main(void)\n"
 "{\n"
 "  vec4 color = vec4(0.0, 0.0, 0.0, 1.0);\n"
 "  mainImage(color, gl_FragCoord.xy);\n"
 "  color.w = 1.0;\n"
 "  gl_FragColor = color;\n"
-"}\n";
-
-//-- Globals
-std::string sample_vs = "void main() { gl_Position = ftransform(); }";
-std::string sample_fs = header_fs + "\n"
-"#ifdef GL_ES  \n"
-"precision highp float;  \n"
-"#endif  \n"
-"float bump(float x) {\n"
-"	return abs(x) > 1.0 ? 0.0 : 1.0 - x * x;\n"
-"}\n"
-"void main(void)\n"
-"{\n"
-"	vec2 uv = (gl_FragCoord.xy / iResolution.xy);\n"
-"	float c = 3.0;\n"
-"	vec3 color = vec3(1.0);\n"
-"	color.x = bump(c * (uv.x - 0.75));\n"
-"	color.y = bump(c * (uv.x - 0.5));\n"
-"	color.z = bump(c * (uv.x - 0.25));\n"
-"	float line = abs(0.01 / abs(0.5-uv.y) );\n"
-"	uv.y = abs( uv.y - 0.5 );\n"
-"	vec4 soundWave =  texture2D( iChannel0, vec2(abs(0.5-uv.x)+0.005, uv.y) );\n"
-"	color *= line * (1.0 - 2.0 * abs( 0.5 - uv.xxx ) + pow( soundWave.y, 10.0 ) * 30.0 );\n"
-"	gl_FragColor = vec4(color, 0.0);\n"
 "}\n";
 
 bool initialized = false;
@@ -349,6 +447,10 @@ GLint iChannel2Loc          = 0;
 GLint iChannel3Loc          = 0;
 
 GLuint iChannel0 = 0;
+GLuint iChannel1 = 0;
+GLuint iChannel2 = 0;
+GLuint iChannel3 = 0;
+
 bool needsUpload = true;
 
 kiss_fft_cfg cfg;
@@ -360,6 +462,31 @@ int samplesPerSec = 0;
 int width = 0;
 int height = 0;
 
+void unloadPreset() {
+  if (shader) {
+    glDeleteProgram(shader);
+    shader = 0;
+  }
+
+  if (iChannel1) {
+    cout << "Unloading iChannel1 " << iChannel1 << endl;
+    glDeleteTextures(1, &iChannel1);
+    iChannel1 = 0;
+  }
+
+  if (iChannel2) {
+    cout << "Unloading iChannel2 " << iChannel1 << endl;
+    glDeleteTextures(1, &iChannel2);
+    iChannel2 = 0;
+  }
+
+  if (iChannel3) {
+    cout << "Unloading iChannel3 " << iChannel1 << endl;
+    glDeleteTextures(1, &iChannel3);
+    iChannel3 = 0;
+  }
+}
+
 GLuint createShader(const string &file)
 {
   std::ostringstream ss;
@@ -369,13 +496,54 @@ GLuint createShader(const string &file)
   cout << "Creating shader from " << fullPath << endl;
 
   std::ifstream t(fullPath);
-  std::string str((std::istreambuf_iterator<char>(t)),
-                   std::istreambuf_iterator<char>());
+  std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-  sample_fs = header_fs + "\n" + str + "\n" + footer_fs;
+  //std::string str = "void mainImage( out vec4 fragColor, in vec2 fragCoord ) { fragColor = texture2D(iChannel1, fragCoord.xy / iResolution.xy); }";
 
-  shader = compileAndLinkProgram(sample_vs.c_str(), sample_fs.c_str());
-  return shader;
+  std::string fsSource = fsHeader + "\n" + str + "\n" + fsFooter;
+  return compileAndLinkProgram(vsSource.c_str(), fsSource.c_str());
+}
+
+GLint loadTexture(int number)
+{
+  if (number >= 0 && number < g_numberTextures) {
+    GLint format = number > 10 ? GL_RGBA : GL_RGB;
+    GLint scaling = GL_LINEAR;
+    GLint repeat = GL_CLAMP_TO_EDGE;
+
+    if (number == 16) {
+      format = GL_LUMINANCE;
+    }
+
+    if (number == 15 || number == 16) {
+      scaling = GL_NEAREST;
+    }
+
+    if (number == 16) {
+      repeat = GL_REPEAT;
+    }
+
+    return createTexture(g_fileTextures[number], format, scaling, repeat);
+  }
+
+  return 0;
+/*
+            var format = gl.RGBA;
+            if( url.mSrc=="/presets/tex15.png" || url.mSrc=="/presets/tex17.png" )
+                format = gl.LUMINANCE;
+
+            if( url.mSrc=="/presets/tex14.png" )
+                createGLTextureNearest( gl, texture.image, texture.globject );
+            else if( url.mSrc=="/presets/tex15.png" )
+                createGLTextureNearestRepeat( gl, texture.image, texture.globject );
+            else
+               createGLTexture( gl, texture.image, format, texture.globject );
+
+            texture.loaded = true;
+            if( me.mTextureCallbackFun!=null )
+                me.mTextureCallbackFun( me.mTextureCallbackObj, slot, texture.image, true, true, 0, -1.0, me.mID );
+        }
+*/
 }
 
 void loadPreset(int number)
@@ -384,11 +552,7 @@ void loadPreset(int number)
   {
     g_currentPreset = number;
 
-    if (shader != 0) {
-      glDeleteProgram(shader);
-      shader = 0;
-    }
-
+    unloadPreset();
     shader = createShader(g_filePresets[g_currentPreset]);
 
     iResolutionLoc        = glGetUniformLocation(shader, "iResolution");
@@ -402,6 +566,14 @@ void loadPreset(int number)
     iChannel1Loc          = glGetUniformLocation(shader, "iChannel1");
     iChannel2Loc          = glGetUniformLocation(shader, "iChannel2");
     iChannel3Loc          = glGetUniformLocation(shader, "iChannel3");
+
+    if (g_channel1Presets[g_currentPreset] >= 0) {
+    	iChannel1 = loadTexture(g_channel1Presets[g_currentPreset]);
+    }
+
+    if (g_channel2Presets[g_currentPreset] >= 0) {
+    	iChannel2 = loadTexture(g_channel2Presets[g_currentPreset]);
+    }
   }
 }
 
@@ -437,10 +609,29 @@ extern "C" void Render()
 
     glUseProgram(shader);
     glUniform3f(iResolutionLoc, width, height, 0.0f);
-    glUniform1f(iChannel0Loc, iChannel0);
     glUniform1f(iGlobalTimeLoc, time);
     glUniform1f(iSampleRateLoc, samplesPerSec);
     glUniform1fv(iChannelTimeLoc, 4, tv);
+
+    glActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glUniform1i(iChannel0Loc, 0);
+    glBindTexture(GL_TEXTURE_2D, iChannel0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glUniform1i(iChannel1Loc, 1);
+    glBindTexture(GL_TEXTURE_2D, iChannel1);
+
+    glActiveTexture(GL_TEXTURE2);
+    glEnable(GL_TEXTURE_2D);
+    glUniform1i(iChannel2Loc, 2);
+    glBindTexture(GL_TEXTURE_2D, iChannel2);
+
+    glActiveTexture(GL_TEXTURE3);
+    glEnable(GL_TEXTURE_2D);
+    glUniform1i(iChannel3Loc, 3);
+    glBindTexture(GL_TEXTURE_2D, iChannel3);
 
     glBegin(GL_QUADS);
       glVertex3f(-1.0f, 1.0f, 0.0f);
@@ -452,6 +643,18 @@ extern "C" void Render()
     glUseProgram(0);
 
     glPopMatrix();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -683,8 +886,7 @@ extern "C" void ADDON_Destroy()
 {
   cout << "ADDON_Destroy" << std::endl;
 
-  if (shader)
-    glDeleteProgram(shader);
+  unloadPreset();
 
   if (iChannel0) {
     glDeleteTextures(1, &iChannel0);

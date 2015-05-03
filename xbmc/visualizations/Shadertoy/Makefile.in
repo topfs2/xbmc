@@ -5,19 +5,19 @@ SLIB = @abs_top_srcdir@/system/libvisShadertoy.so
 else
 SLIB = @abs_top_srcdir@/addons/visualization.shadertoy/Shadertoy.vis
 endif
-OBJS = main.o kiss_fft.o
+OBJS = main.o kiss_fft.o lodepng.o
 
 ifeq (@USE_OPENGLES@,1)
   ifeq ($(findstring osx,$(ARCH)), osx)
     LDFLAGS += -framework OpenGLES
   else
-    LDFLAGS += -lGLESv2
+    LDFLAGS += -lGLESv2 -lSDL2
   endif
 else
   ifeq ($(findstring osx,$(ARCH)), osx)
     LDFLAGS += -framework OpenGL
   else
-    LDFLAGS += -lGL
+    LDFLAGS += -lGL -lSDL2
   endif
 endif
 

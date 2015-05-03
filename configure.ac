@@ -1291,7 +1291,7 @@ fi
     PKG_CHECK_MODULES([SDL2], [sdl2],
       [AC_DEFINE([SDL_VERSION],[2],["SDL major version"])
        AC_DEFINE([HAVE_SDL],[1],["Define to 1 if using sdl"])
-       INCLUDES="$INCLUDES $SDL2_CFLAGS"; LIBS="$LIBS $SDL2_LIBS"; use_joystick="yes"],
+       INCLUDES="$INCLUDES $SDL2_CFLAGS"; LIBS="$LIBS $SDL2_LIBS -lSDL2_image"; use_joystick="yes"],
       [if test "$use_joystick" = "yes"; then
         AC_MSG_ERROR($sdl_joystick_not_found)
       elif test "$use_joystick" != "no"; then
