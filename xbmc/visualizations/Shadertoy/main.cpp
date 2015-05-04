@@ -25,6 +25,7 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include <ctime>
 #include <SDL2/SDL.h> // Grrr
 #include <math.h>
 #include <complex.h>
@@ -604,14 +605,24 @@ extern "C" void Render()
       needsUpload = false;
     }
 
-    float time = (float)SDL_GetTicks() / 1000.0f;
-    GLfloat tv[] = { time, time, time, time };
+    float t = (float)SDL_GetTicks() / 1000.0f;
+    GLfloat tv[] = { t, t, t, t };
 
     glUseProgram(shader);
     glUniform3f(iResolutionLoc, width, height, 0.0f);
-    glUniform1f(iGlobalTimeLoc, time);
+    glUniform1f(iGlobalTimeLoc, t);
     glUniform1f(iSampleRateLoc, samplesPerSec);
     glUniform1fv(iChannelTimeLoc, 4, tv);
+
+    time_t now = time(NULL);
+    tm *ltm = localtime(&now);
+
+    float year = 1900 + ltm->tm_year;
+    float month = ltm->tm_mon;
+    float day = ltm->tm_mday;
+    float sec = (ltm->tm_hour * 60 * 60) + (ltm->tm_min * 60) + ltm->tm_sec;
+
+    glUniform4f(iDateLoc, year, month, day, sec);
 
     glActiveTexture(GL_TEXTURE0);
     glEnable(GL_TEXTURE_2D);
